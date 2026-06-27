@@ -22,7 +22,7 @@ from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class ChronosSettings(BaseSettings):  # type: ignore[misc]
+class ChronosSettings(BaseSettings):  # type: ignore
     """Validated configuration for the CHRONOS agent.
 
     All integer fields enforce lower bounds so that obviously insecure values
@@ -105,7 +105,7 @@ class ChronosSettings(BaseSettings):  # type: ignore[misc]
 
     # --- Derived fields (computed at validation time) -----------------------
 
-    @computed_field  # type: ignore[misc]
+    @computed_field  # type: ignore
     @property
     def zero_knowledge_q(self) -> int:
         """Order of the prime-order subgroup: q = (p - 1) / 2.
