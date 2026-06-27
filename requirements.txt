@@ -1,6 +1,4 @@
 httpx
-pytest
-pytest-cov
 pydantic
 pydantic-settings
 cryptography

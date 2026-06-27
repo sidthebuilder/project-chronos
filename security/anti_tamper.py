@@ -1,7 +1,7 @@
 """
 Project CHRONOS — Anti-Tamper and Anti-Debugging Engine (§4.4)
 
-This module implements the enterprise defence layer described in §4.4 of the
+This module implements the defence layer described in §4.4 of the
 CHRONOS security model.  It runs as a background daemon thread that executes
 heuristic checks every *check_interval* seconds.  On detection, it calls
 os._exit(1) — bypassing all atexit handlers, signal handlers, and Python
