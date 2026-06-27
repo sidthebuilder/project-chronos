@@ -1,85 +1,219 @@
-# mypy: ignore-errors
+"""
+Project CHRONOS — Benchmark Runner
+
+Measures and reports real performance metrics for all four CHRONOS subsystems.
+Output is written to real_results.md in the project root.
+
+Run from the project directory:
+    python benchmark.py
+
+What is measured:
+    1. SHA-256 hash rate (PoSW calibration throughput)
+    2. Paillier key generation time
+    3. Paillier encryption time per operation
+    4. Paillier homomorphic evaluation time (no artificial sleep)
+    5. Paillier decryption verification (confirms E(A)+E(B)=E(150))
+    6. drand network latency (async, measured properly with asyncio.run)
+    7. Triple-pass memory wipe time
+"""
+
+import asyncio
 import os
+import platform
 import sys
 import time
+from typing import Any, Dict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import platform
+from drand_client import DrandClient  # noqa: E402
+from fhe_engine import FHEEngineMock, decrypt  # noqa: E402
+from memory_sanitizer import MemorySanitizer  # noqa: E402
+from posw import PoSWManager  # noqa: E402
 
-from drand_client import DrandClient
-from fhe_engine import FHEEngineMock
-from posw import PoSWManager
+
+def _fmt_ms(seconds: float) -> str:
+    return f"{seconds * 1000:.3f} ms"
 
 
-def run_benchmark():
-    print("Gathering real performance metrics for CHRONOS...")
+def _measure_posw(duration_sec: int = 1) -> Dict[str, Any]:
+    posw = PoSWManager(target_duration_seconds=duration_sec)
+    return {
+        "hash_rate": posw._hashes_per_second,
+        "t_for_1h": posw._hashes_per_second * 3600,
+    }
 
-    # Measure PoSW baseline
-    print("1. Measuring CPU Hashrate...")
-    posw = PoSWManager(target_duration_seconds=1)
-    # the manager calibrates in init
 
-    # Measure Drand latency
-    print("2. Measuring Drand network latency...")
-    drand = DrandClient()
-    s = time.time()
-    drand.fetch_latest_round()
-    e = time.time()
-    drand_latency = (e - s) * 1000
-
-    # Measure FHE Math
-    print("3. Measuring True Homomorphic Encryption...")
+def _measure_fhe() -> Dict[str, Any]:
+    t0 = time.perf_counter()
     fhe = FHEEngineMock()
+    keygen_sec = time.perf_counter() - t0
 
-    s = time.time()
+    t0 = time.perf_counter()
     ct1, ct2 = fhe.encrypt_data(b"")
-    enc_time = (time.time() - s) * 1000
+    enc_sec = time.perf_counter() - t0
 
-    s = time.time()
+    t0 = time.perf_counter()
     ct_out = fhe.evaluate_inference((ct1, ct2))
-    eval_time = (time.time() - s) * 1000
+    eval_sec = time.perf_counter() - t0
 
-    # Verify the math!
-    # A = 100, B = 50. E(A) + E(B) = E(150)
-    from fhe_engine import decrypt
+    # Verify correctness using the standalone decrypt shim
+    n = fhe.crypto.pub_key.n
+    g = fhe.crypto.pub_key.g
+    n_sq = fhe.crypto.pub_key.n_sq
+    l_val = fhe.crypto.priv_key.l_val
+    mu = fhe.crypto.priv_key.mu
 
-    decrypted_result = decrypt(fhe.pub_key, fhe.priv_key, ct_out)
+    decrypted = decrypt((n, g, n_sq), (l_val, mu), ct_out)
 
-    markdown_content = f"""# CHRONOS: Real-World Performance Metrics
+    return {
+        "key_bits": fhe.crypto.pub_key.n.bit_length(),
+        "keygen_sec": keygen_sec,
+        "enc_sec": enc_sec,
+        "eval_sec": eval_sec,
+        "decrypted_result": decrypted,
+        "math_correct": decrypted == 150,
+    }
 
-This file contains actual runtime data from the CHRONOS agent running on the target hardware.
+
+async def _measure_drand_async() -> Dict[str, Any]:
+    client = DrandClient()
+    t0 = time.perf_counter()
+    data = await client.fetch_latest_round()
+    elapsed = time.perf_counter() - t0
+    return {
+        "latency_sec": elapsed,
+        "round": data.get("round", "?") if data else "FAILED",
+        "reachable": data is not None,
+    }
+
+
+def _measure_drand() -> Dict[str, Any]:
+    try:
+        return asyncio.run(_measure_drand_async())
+    except Exception as exc:
+        return {
+            "latency_sec": 0,
+            "round": "FAILED",
+            "reachable": False,
+            "error": str(exc),
+        }
+
+
+def _measure_memory_wipe(size_kb: int = 64) -> Dict[str, Any]:
+    buf = bytearray(os.urandom(size_kb * 1024))
+    t0 = time.perf_counter()
+    MemorySanitizer.zeroize_buffer(buf)
+    elapsed = time.perf_counter() - t0
+    return {"size_kb": size_kb, "elapsed_sec": elapsed}
+
+
+def run_benchmark() -> None:
+    print("=" * 60)
+    print("  PROJECT CHRONOS — Performance Benchmark")
+    print("=" * 60)
+
+    print("\n[1/4] Measuring PoSW hash rate...")
+    posw_metrics = _measure_posw(duration_sec=1)
+    print(f"      Hash rate: {posw_metrics['hash_rate']:,} SHA-256/s")
+
+    print("[2/4] Measuring Paillier FHE (key gen + encrypt + eval)...")
+    fhe_metrics = _measure_fhe()
+    print(f"      Key gen:   {_fmt_ms(fhe_metrics['keygen_sec'])}")
+    print(f"      Encrypt:   {_fmt_ms(fhe_metrics['enc_sec'])}")
+    print(f"      HE eval:   {_fmt_ms(fhe_metrics['eval_sec'])}")
+    print(
+        f"      E(100)+E(50)=E({fhe_metrics['decrypted_result']})  "
+        f"{'✓ CORRECT' if fhe_metrics['math_correct'] else '✗ WRONG'}"
+    )
+
+    print("[3/4] Measuring drand network latency...")
+    drand_metrics = _measure_drand()
+    if drand_metrics["reachable"]:
+        print(f"      Latency:   {_fmt_ms(drand_metrics['latency_sec'])}")
+        print(f"      Round:     {drand_metrics['round']}")
+    else:
+        print(
+            f"      OFFLINE — drand unreachable: {drand_metrics.get('error', 'unknown')}"
+        )
+
+    print("[4/4] Measuring memory sanitizer (64 KB triple-pass wipe)...")
+    wipe_metrics = _measure_memory_wipe(64)
+    print(f"      Wipe time: {_fmt_ms(wipe_metrics['elapsed_sec'])}")
+
+    # --- Write markdown report ---
+    drand_section = (
+        f"- **Latency**: `{_fmt_ms(drand_metrics['latency_sec'])}`\n"
+        f"- **Current Round**: `{drand_metrics['round']}`\n"
+        f"- **Oracle Status**: {'✓ Online' if drand_metrics['reachable'] else '✗ Offline'}"
+        if drand_metrics["reachable"]
+        else f"- **Oracle Status**: ✗ Offline (`{drand_metrics.get('error', 'unknown')}`)"
+    )
+
+    report = f"""# CHRONOS — Real-World Performance Metrics
+
+> Generated by `benchmark.py` on {platform.node()}
 
 ## Hardware Profile
-- **Architecture**: {platform.machine()}
-- **Processor**: {platform.processor()}
-- **System**: {platform.system()} {platform.release()}
 
-## 1. Cryptographic Fuse (PoSW)
-- **Hash Algorithm**: SHA-256
-- **Calibration Target**: 1 second
-- **Measured Throughput**: `{posw.T:,.0f} hashes/second`
-- **Estimated 1-Hour Mission Difficulty**: `{posw.T * 3600:,.0f} hashes`
+| Field | Value |
+|-------|-------|
+| Architecture | `{platform.machine()}` |
+| Processor | `{platform.processor() or "N/A"}` |
+| System | `{platform.system()} {platform.release()}` |
+| Python | `{platform.python_version()}` |
 
-## 2. Plaintext Blindness (True FHE)
-We upgraded the FHE Engine from a simulated AES wrapper to a **True Paillier Homomorphic Encryption** system.
-- **Key Size**: 512-bit RSA primes
-- **Encryption Time**: `{enc_time:.2f} ms`
-- **Homomorphic Addition Time**: `{eval_time - 1500:.2f} ms` (excluding 1.5s simulated network delay)
-- **Mathematical Verification**: The agent blindly added two encrypted integers (100 and 50) together. After decryption, the result was exactly **{decrypted_result}**, proving that the mathematical operations over the ciphertexts were 100% correct without ever exposing the plaintext!
+---
 
-## 3. Remote Verifiability (Drand)
-- **API Endpoint**: `https://api.drand.sh/public/latest`
-- **Network Latency**: `{drand_latency:.2f} ms`
-- **Oracle Round Interval**: 3 seconds
+## 1. Cryptographic Fuse (PoSW — SHA-256 Hash Chain)
 
-*These real results prove the theoretical viability of Project CHRONOS.*
+- **Algorithm**: SHA-256 iterated sequential chain
+- **Measured Throughput**: `{posw_metrics['hash_rate']:,} hashes/second`
+- **1-Hour Mission Difficulty**: `{posw_metrics['t_for_1h']:,} hashes`
+- **Parallelism Resistance**: Sequential by construction — adding cores provides zero speedup
+
+---
+
+## 2. Plaintext Blindness (Paillier Homomorphic Encryption)
+
+| Operation | Time |
+|-----------|------|
+| Paillier Key Generation ({fhe_metrics['key_bits']}-bit modulus) | `{_fmt_ms(fhe_metrics['keygen_sec'])}` |
+| Encrypt integer (one ciphertext) | `{_fmt_ms(fhe_metrics['enc_sec'])}` |
+| Homomorphic Addition E(A)+E(B) | `{_fmt_ms(fhe_metrics['eval_sec'])}` |
+
+**Mathematical Verification**: The agent evaluated E(100) ⊕ E(50) → E(**{fhe_metrics['decrypted_result']}**) over
+ciphertexts, never decrypting either input.  Correctness confirmed by decryption: {'**PASS ✓**' if fhe_metrics['math_correct'] else '**FAIL ✗**'}
+
+---
+
+## 3. Dead Man's Switch (drand Randomness Beacon)
+
+{drand_section}
+- **Round Interval**: 3 seconds
+- **Chain**: League of Entropy default (BLS12-381 threshold signatures)
+
+---
+
+## 4. Erasure Protocol (Triple-Pass C-Level Memory Wipe)
+
+- **Buffer Size**: `{wipe_metrics['size_kb']} KB`
+- **Wipe Time**: `{_fmt_ms(wipe_metrics['elapsed_sec'])}`
+- **Method**: `ctypes.memset()` — three passes (0x00, 0xFF, 0x00)
+- **Verification**: Read-back byte-check confirms all zeros post-wipe
+
+---
+
+*Figures represent single-run measurements on the machine above.  Run
+`python benchmark.py` to regenerate with current hardware metrics.*
 """
 
-    with open("real_results.md", "w", encoding="utf-8") as f:
-        f.write(markdown_content)
+    out_path = os.path.join(os.path.dirname(__file__), "real_results.md")
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(report)
 
-    print("Wrote benchmark data to real_results.md")
+    print(f"\nBenchmark report written to: {out_path}")
+    print("=" * 60)
 
 
 if __name__ == "__main__":

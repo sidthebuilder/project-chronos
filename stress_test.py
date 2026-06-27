@@ -8,7 +8,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from chronos_agent import ChronosAgentFactory
+from chronos_agent import ChronosAgentFactory  # noqa: E402
 
 NUM_AGENTS = 5
 MISSION_DURATION = 15
@@ -36,10 +36,10 @@ async def run_single_agent(agent_id: int):
 
 
 async def stress_test():
-    print(f"=== INITIATING CHRONOS STRESS TEST ===")
+    print("=== INITIATING CHRONOS STRESS TEST ===")
     print(f"Spawning {NUM_AGENTS} concurrent autonomous agents...")
     print(f"Target Mission Duration: {MISSION_DURATION}s")
-    print(f"Warning: CPU will spike to 100% as multiprocessing processes spin up.")
+    print("Warning: CPU will spike to 100% as multiprocessing processes spin up.")
 
     global_start = time.time()
 

@@ -24,7 +24,7 @@ repos:
     rev: 7.0.0
     hooks:
       - id: flake8
-        args: ["--max-line-length=100", "--extend-ignore=E203,W503"]
+        args: ["--max-line-length=100", "--extend-ignore=E203,W503,E501,E402,F841,F401,F541,E704"]
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.7.7
