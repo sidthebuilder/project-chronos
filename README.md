@@ -9,8 +9,10 @@ See [LICENSE](LICENSE) for terms. No use permitted without explicit written cons
 
 ## Research Paper
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20847865.svg)](https://doi.org/10.5281/zenodo.20847865)
+
 > Kumar, S. (2026). *Project CHRONOS: A Fully Homomorphic Ephemeral AI Agent with Provable
-> Self-Termination and Remote Verifiability.* Independent Preprint. Zenodo.
+> Self-Termination and Remote Verifiability.* [Zenodo Preprint](https://zenodo.org/records/20847865).
 
 ### Abstract
 
