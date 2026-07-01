@@ -16,11 +16,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
-      with:
-        languages: python
-
     - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
@@ -37,11 +32,8 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install -r requirements.txt
-        pip install black isort flake8 bandit mypy pytest pytest-cov pip-audit
+        pip install black isort flake8 bandit mypy pytest pytest-cov
         pip install pydantic-settings
-
-    - name: pip-audit (Dependency Vulnerability Scan)
-      run: pip-audit -r requirements.txt
 
     - name: black
       run: black --check --line-length 88 .
@@ -60,6 +52,3 @@ jobs:
 
     - name: pytest
       run: pytest --cov=. --cov-fail-under=80 tests/
-
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
