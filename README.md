@@ -1,4 +1,4 @@
-# Project CHRONOS
+# Project CHRONOs (Prototype)
 
 **A Fully Homomorphic Ephemeral AI Agent with Provable Self-Termination and Remote Verifiability**
 
