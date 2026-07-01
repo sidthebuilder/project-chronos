@@ -36,16 +36,8 @@ class TestPoSWManager(unittest.TestCase):
         self, mock_process_cls, mock_queue_cls
     ) -> None:
         """compute_posw() must spawn exactly one subprocess and join it."""
-        # Build a fake PoSWProof to put on the fake queue
-        fake_proof = PoSWProof(
-            merkle_root="deadbeef" * 8,
-            checkpoints=[b"\x00" * 32],
-            t=self.posw.t,
-            seed=self.posw._seed,
-            elapsed_sec=0.0,
-        )
         mock_q = MagicMock()
-        mock_q.get_nowait.return_value = fake_proof
+        mock_q.get_nowait.return_value = [b"\x00" * 32]
         mock_queue_cls.return_value = mock_q
 
         mock_proc = MagicMock()
@@ -58,7 +50,7 @@ class TestPoSWManager(unittest.TestCase):
         mock_proc.start.assert_called_once()
         mock_proc.join.assert_called_once()
         self.assertIsNotNone(self.posw._proof)
-        self.assertEqual(self.posw._proof.merkle_root, "deadbeef" * 8)
+        self.assertEqual(self.posw._proof.merkle_root, "00" * 32)
 
     def test_derive_key_before_compute_raises(self) -> None:
         """Calling derive_encryption_key() before compute_posw() must raise ValueError."""
@@ -75,6 +67,8 @@ class TestPoSWManager(unittest.TestCase):
             t=1,
             seed=b"\x01" * 32,
             elapsed_sec=1.0,
+            target_sec=1,
+            drift_fraction=0.0,
         )
         self.posw._proof = fake_proof
         # Override seed so HKDF salt is deterministic too
@@ -93,6 +87,8 @@ class TestPoSWManager(unittest.TestCase):
             t=1,
             seed=b"\x02" * 32,
             elapsed_sec=1.0,
+            target_sec=1,
+            drift_fraction=0.0,
         )
         self.posw._proof = fake_proof
         self.posw._seed = b"\x02" * 32
@@ -102,8 +98,8 @@ class TestPoSWManager(unittest.TestCase):
 
     def test_different_roots_produce_different_keys(self) -> None:
         """Different Merkle roots must produce different derived keys (HKDF isolation)."""
-        root_a = PoSWProof("aa" * 32, [], 1, b"\x03" * 32, 0.0)
-        root_b = PoSWProof("bb" * 32, [], 1, b"\x03" * 32, 0.0)
+        root_a = PoSWProof("aa" * 32, [], 1, b"\x03" * 32, 0.0, 1, 0.0)
+        root_b = PoSWProof("bb" * 32, [], 1, b"\x03" * 32, 0.0, 1, 0.0)
 
         self.posw._seed = b"\x03" * 32
 
@@ -116,6 +112,89 @@ class TestPoSWManager(unittest.TestCase):
         self.assertNotEqual(
             key_a, key_b, "Different Merkle roots must produce different keys."
         )
+
+    @patch("posw.mp.Queue")
+    @patch("posw.mp.Process")
+    @patch("posw.time.time")
+    def test_compute_posw_drift_warning(
+        self, mock_time, mock_process_cls, mock_queue_cls
+    ) -> None:
+        """compute_posw() must emit a warning if drift exceeds threshold."""
+        mock_time.side_effect = [100.0, 101.5]
+
+        mock_q = MagicMock()
+        mock_q.get_nowait.return_value = [b"\x00" * 32]
+        mock_queue_cls.return_value = mock_q
+
+        mock_proc = MagicMock()
+        mock_proc.exitcode = 0
+        mock_process_cls.return_value = mock_proc
+
+        with patch.object(self.posw, "_log") as mock_log:
+            self.posw.compute_posw()
+            mock_log.warning.assert_called_once()
+            self.assertIn("[POSW DRIFT]", mock_log.warning.call_args[0][0])
+
+    def test_worker_exitcode_failure(self) -> None:
+        with patch("posw.mp.Process") as mock_process_cls:
+            mock_proc = MagicMock()
+            mock_proc.exitcode = 1
+            mock_process_cls.return_value = mock_proc
+            with self.assertRaises(RuntimeError):
+                self.posw.compute_posw()
+
+    def test_verify_checkpoint(self) -> None:
+        self.posw._proof = PoSWProof(
+            merkle_root="00" * 32,
+            checkpoints=[b"\x00" * 32],
+            t=1,
+            seed=b"a",
+            elapsed_sec=1,
+            target_sec=1,
+            drift_fraction=0.0,
+        )
+        with patch("posw.MerkleTree") as mock_mt:
+            mock_inst = mock_mt.return_value
+            mock_mt.verify.return_value = True
+            res = self.posw.verify_checkpoint(0)
+            self.assertTrue(res)
+
+    def test_proof_property(self) -> None:
+        self.assertIsNone(self.posw.proof)
+        self.posw._proof = PoSWProof(
+            merkle_root="00" * 32,
+            checkpoints=[b"\x00" * 32],
+            t=1,
+            seed=b"a",
+            elapsed_sec=1,
+            target_sec=1,
+            drift_fraction=0.0,
+        )
+        self.assertIsNotNone(self.posw.proof)
+
+
+from posw import MerkleTree, _posw_worker
+
+
+class TestMerkleTree(unittest.TestCase):
+    def test_empty_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            MerkleTree([])
+
+    def test_build_prove_verify(self) -> None:
+        leaves = [bytes([i] * 32) for i in range(3)]
+        tree = MerkleTree(leaves)
+        proof = tree.prove(1)
+        self.assertTrue(MerkleTree.verify(proof))
+        self.assertEqual(proof.leaf_index, 1)
+
+
+class TestPoSWWorker(unittest.TestCase):
+    def test_posw_worker(self) -> None:
+        mock_q = MagicMock()
+        with patch("posw._CHECKPOINT_COUNT", 2):
+            _posw_worker(b"seed", 3, mock_q)
+            mock_q.put.assert_called_once()
 
 
 if __name__ == "__main__":
