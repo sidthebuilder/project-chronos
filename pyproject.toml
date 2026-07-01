@@ -1,2 +1,11 @@
 [tool.bandit]
 exclude_dirs = ["tests"]
+
+[tool.coverage.run]
+omit = [
+    "benchmark.py",
+    "stress_test.py",
+    "make_chronos_pdf.py",
+    "drand_client.py",
+    "tests/*"
+]
