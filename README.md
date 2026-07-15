@@ -13,6 +13,8 @@ See [LICENSE](LICENSE) for terms.
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20847864.svg)](https://doi.org/10.5281/zenodo.20847864)
 [![SSRN](https://img.shields.io/badge/SSRN-Preprint-blue)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6950898)
+[![Rust QA](https://github.com/sidthebuilder/project-chronos/actions/workflows/rust-qa.yml/badge.svg)](https://github.com/sidthebuilder/project-chronos/actions/workflows/rust-qa.yml)
+[![Python QA](https://github.com/sidthebuilder/project-chronos/actions/workflows/qa.yml/badge.svg)](https://github.com/sidthebuilder/project-chronos/actions/workflows/qa.yml)
 
 > Kumar, S. (2026). *Project CHRONOS: A Compositional Architecture for Ephemeral FHE Agents with VDF Time-Locking and Attestable Software Erasure.* Revised v2.
 

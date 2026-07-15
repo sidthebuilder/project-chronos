@@ -1,0 +1,14 @@
+[workspace]
+members = [
+    "chronos-core",
+    "chronos-crypto",
+    "chronos-net",
+    "chronos-agent"
+]
+resolver = "2"
+
+[workspace.dependencies]
+tokio = { version = "1", features = ["full"] }
+anyhow = "1.0"
+sha2 = "0.10"
+hex = "0.4"

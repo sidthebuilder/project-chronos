@@ -1,0 +1,11 @@
+[package]
+name = "chronos-agent"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chronos-core = { path = "../chronos-core" }
+chronos-crypto = { path = "../chronos-crypto" }
+chronos-net = { path = "../chronos-net" }
+tokio.workspace = true
+anyhow.workspace = true
