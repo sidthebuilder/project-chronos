@@ -62,7 +62,6 @@ def _make_agent(duration_sec: int = 3) -> ChronosAgent:
     )
 
 
-@pytest.mark.asyncio
 class TestChronosAgentDeadline(unittest.IsolatedAsyncioTestCase):
 
     async def test_deadline_calculation(self) -> None:
@@ -79,7 +78,6 @@ class TestChronosAgentDeadline(unittest.IsolatedAsyncioTestCase):
         self.assertGreaterEqual(agent.target_round, 1001)
 
 
-@pytest.mark.asyncio
 class TestChronosAgentMission(unittest.IsolatedAsyncioTestCase):
 
     @patch("chronos_agent.MemorySanitizer.zeroize_buffer")

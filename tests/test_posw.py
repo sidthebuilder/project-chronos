@@ -31,33 +31,33 @@ class TestPoSWManager(unittest.TestCase):
         expected_t = self.posw._hashes_per_second * self.posw.target_duration_seconds
         self.assertEqual(self.posw.t, expected_t)
 
-    @patch("posw.mp.Pipe")
-    @patch("posw.mp.Process")
-    def test_compute_posw_dispatches_subprocess(
-        self, mock_process_cls, mock_pipe
-    ) -> None:
+    @patch("posw.mp.get_context")
+    def test_compute_posw_dispatches_subprocess(self, mock_get_context) -> None:
         """compute_posw() must spawn exactly one subprocess and join it.
 
-        The implementation uses mp.Pipe (not mp.Queue) to avoid deadlock.
-        We mock both ends of the pipe: parent_conn.recv() returns checkpoints,
-        child_conn is closed after the worker starts.
+        The implementation uses mp.get_context('spawn').Pipe / .Process.
+        We mock the context object returned by get_context().
         """
-        # Set up a mock pipe with two connection ends.
+        # Build mock pipe ends and process.
         mock_parent_conn = MagicMock()
         mock_child_conn = MagicMock()
         mock_parent_conn.recv.return_value = [b"\x00" * 32]
-        mock_pipe.return_value = (mock_parent_conn, mock_child_conn)
 
         mock_proc = MagicMock()
         mock_proc.exitcode = 0
-        mock_process_cls.return_value = mock_proc
+
+        # The context mock: .Pipe() → (parent, child), .Process() → mock_proc
+        mock_ctx = MagicMock()
+        mock_ctx.Pipe.return_value = (mock_parent_conn, mock_child_conn)
+        mock_ctx.Process.return_value = mock_proc
+        mock_get_context.return_value = mock_ctx
 
         self.posw.compute_posw()
 
-        mock_process_cls.assert_called_once()
+        mock_get_context.assert_called_once_with("spawn")
+        mock_ctx.Process.assert_called_once()
         mock_proc.start.assert_called_once()
         mock_proc.join.assert_called_once()
-        # parent_conn.recv() must have been called to get checkpoints
         mock_parent_conn.recv.assert_called_once()
         self.assertIsNotNone(self.posw._proof)
         self.assertEqual(self.posw._proof.merkle_root, "00" * 32)
@@ -123,42 +123,43 @@ class TestPoSWManager(unittest.TestCase):
             key_a, key_b, "Different Merkle roots must produce different keys."
         )
 
-    @patch("posw.mp.Pipe")
-    @patch("posw.mp.Process")
+    @patch("posw.mp.get_context")
     @patch("posw.time.time")
-    def test_compute_posw_drift_warning(
-        self, mock_time, mock_process_cls, mock_pipe
-    ) -> None:
+    def test_compute_posw_drift_warning(self, mock_time, mock_get_context) -> None:
         """compute_posw() must emit a warning if drift exceeds threshold."""
         mock_time.side_effect = [100.0, 101.5]
 
         mock_parent_conn = MagicMock()
         mock_child_conn = MagicMock()
         mock_parent_conn.recv.return_value = [b"\x00" * 32]
-        mock_pipe.return_value = (mock_parent_conn, mock_child_conn)
 
         mock_proc = MagicMock()
         mock_proc.exitcode = 0
-        mock_process_cls.return_value = mock_proc
+
+        mock_ctx = MagicMock()
+        mock_ctx.Pipe.return_value = (mock_parent_conn, mock_child_conn)
+        mock_ctx.Process.return_value = mock_proc
+        mock_get_context.return_value = mock_ctx
 
         with patch.object(self.posw, "_log") as mock_log:
             self.posw.compute_posw()
             mock_log.warning.assert_called_once()
             self.assertIn("[POSW DRIFT]", mock_log.warning.call_args[0][0])
 
-    @patch("posw.mp.Pipe")
-    @patch("posw.mp.Process")
-    def test_worker_exitcode_failure(self, mock_process_cls, mock_pipe) -> None:
+    @patch("posw.mp.get_context")
+    def test_worker_exitcode_failure(self, mock_get_context) -> None:
         """compute_posw() must raise RuntimeError on non-zero subprocess exit."""
         mock_parent_conn = MagicMock()
         mock_child_conn = MagicMock()
-        # Simulate EOFError (worker died before sending)
         mock_parent_conn.recv.side_effect = EOFError
-        mock_pipe.return_value = (mock_parent_conn, mock_child_conn)
 
         mock_proc = MagicMock()
         mock_proc.exitcode = 1
-        mock_process_cls.return_value = mock_proc
+
+        mock_ctx = MagicMock()
+        mock_ctx.Pipe.return_value = (mock_parent_conn, mock_child_conn)
+        mock_ctx.Process.return_value = mock_proc
+        mock_get_context.return_value = mock_ctx
 
         with self.assertRaises(RuntimeError):
             self.posw.compute_posw()

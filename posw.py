@@ -71,13 +71,6 @@ Calibration:
 import hashlib
 import multiprocessing as mp
 
-# Enforce 'spawn' start method to prevent fork-related crashes on Linux,
-# especially during CI when pytest-cov and asyncio loops are active.
-try:
-    if mp.get_start_method(allow_none=True) != "spawn":
-        mp.set_start_method("spawn", force=True)
-except RuntimeError:
-    pass
 
 import secrets
 import time
@@ -363,9 +356,10 @@ class PoSWManager:
         )
 
         # Pipe: parent_conn receives, child_conn sends.
-        parent_conn, child_conn = mp.Pipe(duplex=False)
+        ctx = mp.get_context("spawn")
+        parent_conn, child_conn = ctx.Pipe(duplex=False)
 
-        worker = mp.Process(
+        worker = ctx.Process(
             target=_posw_worker,
             args=(self._seed, self.t, child_conn),
             name="chronos-posw-worker",
