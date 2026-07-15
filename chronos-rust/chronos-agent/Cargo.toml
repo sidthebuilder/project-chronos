@@ -9,3 +9,4 @@ chronos-crypto = { path = "../chronos-crypto" }
 chronos-net = { path = "../chronos-net" }
 tokio.workspace = true
 anyhow.workspace = true
+sha2.workspace = true

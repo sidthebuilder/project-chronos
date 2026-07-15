@@ -20,7 +20,11 @@ impl DrandClient {
     }
 
     pub async fn fetch_latest(&self) -> Result<DrandBeacon> {
-        let url = format!("{}/public/latest", self.base_url);
+        // drand default chain: 8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce
+        let url = format!(
+            "{}/8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce/public/latest",
+            self.base_url
+        );
         let client = reqwest::Client::new();
         let res = client.get(&url)
             .header("User-Agent", "project-chronos-rust/0.1.0")
