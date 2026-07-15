@@ -11,7 +11,6 @@ import os
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from httpx import RequestError
 
 from drand_client import DrandClient
@@ -61,7 +60,6 @@ _VALID_ROUND = {
 }
 
 
-@pytest.mark.asyncio
 class TestDrandClient(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self) -> None:

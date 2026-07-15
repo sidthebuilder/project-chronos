@@ -16,7 +16,6 @@ import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
-import pytest
 
 from chronos_agent import ChronosAgent, ChronosAgentFactory
 from drand_client import DrandClient
@@ -78,7 +77,6 @@ def _create_mock_response(round_num: int, signature: str = None) -> MagicMock:
     return response
 
 
-@pytest.mark.asyncio
 class TestE2ELifecycle(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self) -> None:
@@ -172,13 +170,10 @@ class TestE2ELifecycle(unittest.IsolatedAsyncioTestCase):
             _create_mock_response(1002),
         ]
 
-        # Construct agent with zero seconds duration
-        agent = ChronosAgentFactory.create(duration_sec=0)
-
-        # Execute mission
+        # Use duration_sec=1 (minimum valid) — max(1, 1//3)=1 round → target=1001
+        agent = ChronosAgentFactory.create(duration_sec=1)
         await agent.run_mission()
 
-        # Rounds to wait = max(1, 0 // 3) = 1 round -> 1000 + 1 = 1001
         self.assertEqual(agent.target_round, 1001)
         self.assertTrue(all(b == 0 for b in agent.raw_sk_buffer))
 
