@@ -465,5 +465,9 @@ async def _async_main() -> None:
     await agent.run_mission()
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Synchronous entry point for the CLI."""
     asyncio.run(_async_main())
+
+if __name__ == "__main__":
+    main()
