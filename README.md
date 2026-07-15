@@ -1,15 +1,12 @@
-# Project CHRONOS (Prototype — v2)
+# Project CHRONOS
 
 **A Compositional Architecture for Ephemeral FHE Agents with VDF Time-Locking and Attestable Software Erasure**
 
-Copyright (c) 2026 Shashank Kumar. All Rights Reserved.  
-See [LICENSE](LICENSE) for terms.
+Copyright (c) 2026 Shashank Kumar. All Rights Reserved. See [LICENSE](LICENSE).
 
 **Contact:** shashankchoudhary792@gmail.com | [github.com/sidthebuilder](https://github.com/sidthebuilder)
 
 ---
-
-## Research Paper
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20847864.svg)](https://doi.org/10.5281/zenodo.20847864)
 [![SSRN](https://img.shields.io/badge/SSRN-Preprint-blue)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=6950898)
@@ -18,133 +15,17 @@ See [LICENSE](LICENSE) for terms.
 
 > Kumar, S. (2026). *Project CHRONOS: A Compositional Architecture for Ephemeral FHE Agents with VDF Time-Locking and Attestable Software Erasure.* Revised v2.
 
-📄 **[Read the revised paper (v2)](CHRONOS_PAPER_v2.md)** — fixes all issues from the original submission.
-
-### What CHRONOS Does
-
-CHRONOS gives an autonomous AI agent three cryptographic guarantees simultaneously:
-
-1. **Plaintext Blindness** — The agent processes sensitive inputs under FHE and never sees plaintext.
-2. **Verifiable Time-Bound Existence** — A VDF over an MPC-generated RSA modulus enforces a mission duration that cannot be parallelism-bypassed.
-3. **Attestable Software Erasure** — A Groth16 SNARK proves the key was destroyed after the deadline.
-
 ---
 
-## v2 Changes (July 2026)
+## What CHRONOS Does
 
-### Paper fixes
-| Issue | Fix |
-|-------|-----|
-| Broken ZK compositeness proof (circular: required knowing factors) | Removed. Compositeness trust now correctly delegated to Diogenes MPC certificate |
-| UC theorem had no PPT reductions (just named assumptions) | All hybrids now include explicit adversary constructions B₁, B₂, B₃ |
-| Fabricated GPU SNARK timing numbers | Removed. Limitations table added: what is and isn't measured |
-| Table/appendix CI inconsistency (±1σ vs 95% CI) | Unified: all tables report mean ± 1σ with CI stated separately |
-| Claimed "new ZK protocol" while also saying "no new primitives" | Removed contradictory claim; framing corrected to "systematic integration" |
+CHRONOS is a research prototype for cryptographic agent containment. It gives an autonomous AI agent three simultaneous guarantees:
 
-### Code fixes
-| File | Fix |
-|------|-----|
-| `posw.py` | `mp.Queue` → `mp.Pipe` (fixes deadlock on large checkpoint payloads) |
-| `chronos_agent.py` | Schnorr NIZK correctly labelled "pre-erasure commitment"; `ISNARKProver` stub wired in |
-| `drand_client.py` | BLS key format corrected for quicknet chain (G1 sigs 48B, G2 pubkey 96B) |
-| `memory_sanitizer.py` | Wipe verification uses `ctypes.string_at` (C-speed) not Python byte loop |
-| `security/anti_tamper.py` | Anomaly threshold raised to 5 consecutive hits; pytest trace whitelist added |
-| `interfaces.py` | Added `ISNARKProver`, `IVDFEngine`, `NoopSNARKProver`, `NoopVDFEngine` stubs |
-| `benchmark.py` | Multi-run statistics (10 runs, mean/std/95%CI); limitations table added |
-| `pyproject.toml` | Complete `[project]` metadata; package is now `pip install .`-able |
+1. **Plaintext Blindness** — The agent processes inputs under Fully Homomorphic Encryption and never observes plaintext.
+2. **Verifiable Time-Bound Existence** — A Verifiable Delay Function enforces a mission duration that cannot be bypassed through parallelism.
+3. **Attestable Software Erasure** — A cryptographic commitment proves the key was destroyed after the deadline.
 
----
-
-## Prototype vs. Paper Specification
-
-This repository is a **pure-Python research prototype**. The table below documents where the prototype diverges from the formal paper specification and why.
-
-| Subsystem | Paper Specification | Prototype Implementation | Status |
-|-----------|--------------------|-----------------------------|--------|
-| **FHE** | TFHE-rs (boolean circuits) | Paillier additively homomorphic encryption | Working prototype |
-| **Sequential Work** | Wesolowski VDF: y = g^{2^T} mod N (MPC modulus) | SHA-256 hash chain PoSW (Cohen 2018) | Working prototype — see `IVDFEngine` for production swap |
-| **Erasure Attestation** | Groth16 SNARK (~180K constraints, BLS12-381) | Schnorr NIZK pre-erasure commitment | **Stub** — `ISNARKProver` interface ready for Rust backend |
-| **Modulus Generation** | Diogenes MPC (n ≥ 2 parties, no party learns factors) | Local simulation | **Stub** — requires live network |
-| **Time Oracle** | drand quicknet chain | drand quicknet chain | ✅ Production-grade |
-| **Memory Erasure** | Triple-pass C-level memset + read-back | ✅ Identical | ✅ Production-grade |
-| **Anti-Tamper** | Debugger/timing detection daemon | ✅ Identical | ✅ Production-grade |
-
----
-
-## Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     ChronosAgent Orchestrator                    │
-│  Phase 1: BOOT → Phase 2: MISSION → Phase 3: TRIGGER → Phase 4: ERASURE │
-└───────┬────────────────┬──────────────┬──────────────────┬──────┘
-        │                │              │                  │
-  ┌─────▼──────┐  ┌──────▼──────┐ ┌────▼─────┐  ┌────────▼──────┐
-  │ICryptographic│  │  ITimeLock  │ │IOracleClient│  │ISNARKProver   │
-  │Engine (FHE) │  │ (PoSW/VDF)  │ │  (drand)  │  │ (Groth16 stub)│
-  │PaillierFHE  │  │PoSWManager  │ │DrandClient│  │NoopSNARK      │
-  └─────────────┘  └─────────────┘ └───────────┘  └───────────────┘
-        │
-  ┌─────▼──────────┐
-  │MemorySanitizer │
-  │(triple-pass    │
-  │ C-level wipe)  │
-  └────────────────┘
-```
-
----
-
-## Security Properties
-
-| Property | Mechanism | Assumption |
-|----------|-----------|------------|
-| Plaintext blindness | FHE inference (no decryption during operation) | TFHE CPA security |
-| Time-bound key access | VDF over MPC RSA modulus | Factoring + VDF sequentiality |
-| Erasure attestation | Groth16 SNARK over zeroization circuit | Groth16 q-PKE + Exclusivity Assumption |
-| Tamper detection | Anti-tamper daemon + mlock | OS memory model |
-
-### What CHRONOS Does NOT Guarantee
-- ❌ Physical erasure (cold-boot, DMA attacks are out of scope)
-- ❌ Post-quantum security (RSA VDF relies on factoring)
-- ❌ Erasure if Exclusivity Assumption is violated (compiler spills, OS swap)
-
----
-
-## Installation
-
-```bash
-# Clone
-git clone https://github.com/sidthebuilder/project-chronos
-cd project-chronos
-
-# Install (Python 3.11+)
-pip install -e ".[dev]"
-
-# Optional: install gmpy2 for 10-100x Paillier speedup
-pip install -e ".[fast]"
-```
-
-### Requirements
-- Python ≥ 3.11
-- All dependencies pinned in `pyproject.toml`
-
----
-
-## Running
-
-```bash
-# Run the agent (10 second mission)
-python chronos_agent.py --duration 10
-
-# Run benchmarks (10 runs, statistical output)
-python benchmark.py --runs 10
-
-# Run tests
-CHRONOS_DISABLE_ANTI_TAMPER=true pytest tests/ -v
-
-# Run tests with coverage
-CHRONOS_DISABLE_ANTI_TAMPER=true pytest tests/ --cov=. --cov-report=term-missing
-```
+The goal is structural containment enforced by mathematics, not behavioral alignment.
 
 ---
 
@@ -152,44 +33,128 @@ CHRONOS_DISABLE_ANTI_TAMPER=true pytest tests/ --cov=. --cov-report=term-missing
 
 ```
 project-chronos/
-├── chronos_agent.py        # Top-level orchestrator (5-phase lifecycle)
-├── fhe_engine.py           # Paillier FHE (ICryptographicEngine)
-├── posw.py                 # SHA-256 PoSW + Merkle tree (ITimeLock)
-├── drand_client.py         # drand oracle client, BLS12-381 verification
-├── memory_sanitizer.py     # Triple-pass C-level memory erasure
-├── interfaces.py           # Protocol interfaces + production stubs
-│                           #   ISNARKProver → NoopSNARKProver
-│                           #   IVDFEngine → NoopVDFEngine
-├── config.py               # Pydantic settings (env-var overridable)
-├── exceptions.py           # Typed exception hierarchy
-├── logger.py               # Structured logging
-├── benchmark.py            # Multi-run statistical benchmark
+├── chronos-rust/               # Rust prototype (active development)
+│   ├── chronos-agent/          # Async Tokio orchestrator (main binary)
+│   ├── chronos-core/           # Secure memory (volatile zeroization), anti-tamper daemon
+│   ├── chronos-crypto/         # FHE engine, VDF, erasure commitment (prototype implementations)
+│   └── chronos-net/            # Drand randomness beacon client
+│
+├── chronos_agent.py            # Python prototype orchestrator
+├── fhe_engine.py               # Paillier FHE
+├── posw.py                     # SHA-256 PoSW + Merkle tree
+├── drand_client.py             # drand oracle client
+├── memory_sanitizer.py         # Triple-pass C-level memory erasure
+├── interfaces.py               # Protocol interfaces and production stubs
 ├── security/
-│   ├── anti_tamper.py      # Debugger/timing detection daemon
-│   └── secure_string.py    # XOR-obfuscated in-memory strings
-├── tests/                  # pytest test suite (9 files)
-├── CHRONOS_PAPER_v2.md     # Revised research paper
-└── pyproject.toml          # Package metadata + build config
+│   ├── anti_tamper.py
+│   └── secure_string.py
+└── tests/
 ```
 
 ---
 
-## Plugging in Production Backends
+## Prototype vs. Paper Specification
 
-The interfaces in `interfaces.py` are the extension points:
+This is a research prototype. The table below documents where the implementation diverges from the formal paper and why.
 
-```python
-# Replace Paillier with TFHE-rs (when Python bindings are available)
-from my_tfhe_backend import TFHEEngine
-agent = ChronosAgent(fhe_engine=TFHEEngine(), ...)
+| Subsystem | Paper Specification | Current Implementation | Status |
+|-----------|--------------------|-----------------------|--------|
+| FHE | TFHE-rs boolean circuits | Textbook RSA multiplicative homomorphism | Prototype |
+| VDF | Wesolowski VDF over MPC RSA modulus | SHA-256 hash chain PoSW | Prototype |
+| Erasure Proof | Groth16 SNARK | SHA-256 hash commitment | Prototype |
+| Modulus Generation | Diogenes MPC | Local constants | Stub |
+| Time Oracle | drand quicknet chain | drand quicknet chain | Production-grade |
+| Memory Erasure | Triple-pass volatile wipe | Triple-pass write_volatile (Rust) | Production-grade |
+| Anti-Tamper | Timing detection daemon | Dedicated OS thread timing daemon | Production-grade |
 
-# Replace SHA-256 PoSW with Wesolowski VDF
-from my_vdf_backend import WesolowskiVDFManager
-agent = ChronosAgent(posw_manager=WesolowskiVDFManager(N=mpc_modulus, T=T), ...)
+---
 
-# Replace Noop SNARK with real Groth16 prover
-from my_snark_backend import Groth16Prover
-agent = ChronosAgent(snark_prover=Groth16Prover(proving_key_path="pk.bin"), ...)
+## v2 Changes (July 2026)
+
+### Paper
+| Issue | Fix |
+|-------|-----|
+| Broken ZK compositeness proof (circular reasoning) | Removed. Trust delegated to Diogenes MPC certificate |
+| UC theorem had no PPT reductions | All hybrids include explicit adversary constructions B1, B2, B3 |
+| Fabricated GPU SNARK timing numbers | Removed. Limitations table added |
+| Claimed "new ZK protocol" while also saying "no new primitives" | Removed contradiction; framing corrected to "systematic integration" |
+
+### Code
+| File | Fix |
+|------|-----|
+| `posw.py` | `mp.Queue` to `mp.Pipe` — fixes deadlock on large checkpoint payloads |
+| `chronos_agent.py` | Schnorr NIZK correctly labelled pre-erasure commitment |
+| `drand_client.py` | BLS key format corrected for quicknet chain |
+| `memory_sanitizer.py` | Wipe verification uses `ctypes.string_at` |
+| `security/anti_tamper.py` | Anomaly threshold raised to 5 consecutive hits |
+
+### Rust Prototype (new)
+| Component | What it implements |
+|-----------|-------------------|
+| `chronos-crypto/fhe.rs` | RSA multiplicative homomorphism. `E(m1) * E(m2) = E(m1*m2)`. Real cryptographic property. |
+| `chronos-crypto/vdf.rs` | SHA-256 hash chain PoSW with `verify()`. |
+| `chronos-crypto/snark.rs` | SHA-256 hash commitment to key material before erasure. Honest: not a SNARK. |
+| `chronos-core/memory.rs` | `SecureString` with triple-pass `write_volatile` zeroization on `Drop`. |
+| `chronos-core/tamper.rs` | Anti-tamper daemon on a dedicated OS thread. |
+| `chronos-net/drand.rs` | Async drand beacon fetch via reqwest. |
+| `chronos-agent/main.rs` | Tokio async orchestrator. Full 5-phase lifecycle. |
+
+---
+
+## Security Properties
+
+| Property | Mechanism | Assumption |
+|----------|-----------|------------|
+| Plaintext blindness | FHE inference | TFHE CPA security |
+| Time-bound key access | VDF over MPC RSA modulus | Factoring + VDF sequentiality |
+| Erasure attestation | Groth16 SNARK over zeroization circuit | Groth16 q-PKE |
+| Tamper detection | Timing daemon + mlock | OS memory model |
+
+### What CHRONOS Does NOT Guarantee
+- Physical erasure against cold-boot or DMA attacks
+- Post-quantum security (RSA VDF relies on factoring hardness)
+- Erasure if the OS swaps the key to disk before mlock is called
+
+---
+
+## Installation
+
+### Rust Prototype
+
+Requires Rust stable and the Visual Studio C++ Build Tools (Windows) or `build-essential` (Linux).
+
+```bash
+cd chronos-rust
+cargo build --release
+cargo test
+```
+
+### Python Prototype
+
+```bash
+pip install -e ".[dev]"
+CHRONOS_DISABLE_ANTI_TAMPER=true pytest tests/ -v
+```
+
+---
+
+## Running the Rust Agent
+
+```bash
+cd chronos-rust
+cargo run --bin chronos-agent
+```
+
+Expected output:
+```
+=== CHRONOS RUST AGENT BOOTSTRAP ===
+[1/5] Fetching Drand randomness beacon...
+[2/5] Generating FHE keypair, pinning secret key to secure memory...
+[3/5] Spawning VDF time-lock (10M iterations)...
+[4/5] Spawning anti-tamper daemon on dedicated OS thread...
+[5/5] Awaiting VDF time-lock...
+      Erasure commitment verified: true
+=== AGENT LIFECYCLE COMPLETE ===
 ```
 
 ---
@@ -209,8 +174,4 @@ agent = ChronosAgent(snark_prover=Groth16Prover(proving_key_path="pk.bin"), ...)
 
 ---
 
-## Contact
-
 **Shashank Kumar** — shashankchoudhary792@gmail.com
-
-For collaboration, research questions, or production deployment inquiries, open an issue or email directly.
