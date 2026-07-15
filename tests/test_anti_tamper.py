@@ -118,13 +118,17 @@ class TestAntiTamperEngine(unittest.TestCase):
             1000,
             2001000,  # 1st anomaly (ratio 2000x, > 1ms)
             1000,
-            2001000,  # 2nd anomaly (ratio 2000x, > 1ms)
+            2001000,  # 2nd anomaly
             1000,
-            2001000,  # 3rd anomaly (ratio 2000x, > 1ms) -> returns True
+            2001000,  # 3rd anomaly
             1000,
-            2000,  # 4th normal (ratio 1x) -> returns False
+            2001000,  # 4th anomaly
             1000,
-            2000,  # 5th baseline=0 check
+            2001000,  # 5th anomaly -> returns True (threshold reached)
+            1000,
+            2000,  # 6th normal (resets consecutive counter)
+            1000,
+            2000,  # 7th normal check
         ]
         self.engine._timing_baseline_ns = 1000
 
@@ -132,9 +136,13 @@ class TestAntiTamperEngine(unittest.TestCase):
         self.assertFalse(self.engine._detect_timing_anomaly())
         # 2nd detection -> False
         self.assertFalse(self.engine._detect_timing_anomaly())
-        # 3rd detection -> True
+        # 3rd detection -> False
+        self.assertFalse(self.engine._detect_timing_anomaly())
+        # 4th detection -> False
+        self.assertFalse(self.engine._detect_timing_anomaly())
+        # 5th detection -> True (threshold reached)
         self.assertTrue(self.engine._detect_timing_anomaly())
-        # 4th normal -> False
+        # 6th normal -> False
         self.assertFalse(self.engine._detect_timing_anomaly())
 
         self.engine._timing_baseline_ns = 0

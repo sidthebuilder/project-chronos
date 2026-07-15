@@ -27,7 +27,7 @@ dependencies = [
     "pydantic>=2.5,<3.0",
     "pydantic-settings>=2.0,<3.0",
     "cryptography>=42.0,<47.0",
-    "py_ecc>=6.0,<9.0",
+    "py_ecc>=8.0,<9.0",
 ]
 
 [project.optional-dependencies]

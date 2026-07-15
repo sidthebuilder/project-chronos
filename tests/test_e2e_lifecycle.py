@@ -84,7 +84,9 @@ class TestE2ELifecycle(unittest.IsolatedAsyncioTestCase):
         os.environ["CHRONOS_DISABLE_ANTI_TAMPER"] = "true"
 
         # Patch the public key constant in drand_client
-        self.pk_patcher = patch("drand_client._DRAND_PUBLIC_KEY", _TEST_PK_HEX)
+        self.pk_patcher = patch(
+            "drand_client._DRAND_QUICKNET_PUBLIC_KEY", _TEST_PK_HEX
+        )
         self.pk_patcher.start()
 
     def tearDown(self) -> None:

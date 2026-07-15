@@ -299,7 +299,6 @@ class DrandClient(IOracleClient):
 
         # --- Full BLS pairing check (py_ecc) ---
         try:
-            from py_ecc.bls.g2_primitives import pubkey_to_G2
             from py_ecc.bls.hash import os2ip
             from py_ecc.bls.hash_to_curve import hash_to_G1
             from py_ecc.bls.point_compression import decompress_G1, decompress_G2

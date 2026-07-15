@@ -11,6 +11,7 @@ Verifies the physical memory wipe contract:
 
 import os
 import sys
+import ctypes
 import unittest
 from unittest.mock import call, patch
 
@@ -33,21 +34,19 @@ class TestMemorySanitizer(unittest.TestCase):
             for i in range(len(buf)):
                 buf[i] = val
 
-        with patch("ctypes.addressof", return_value=0xDEADBEEF), patch(
-            "ctypes.memset", side_effect=_fake_memset
-        ) as mock_memset:
+        with patch("ctypes.memset", side_effect=_fake_memset) as mock_memset:
             MemorySanitizer.zeroize_buffer(buf)
 
         self.assertEqual(mock_memset.call_count, 3, "Expected exactly 3 memset calls.")
-        mock_memset.assert_any_call(0xDEADBEEF, 0x00, buf_len)
-        mock_memset.assert_any_call(0xDEADBEEF, 0xFF, buf_len)
-        # Verify ordering: 0x00, 0xFF, 0x00
+        ptr = ctypes.addressof(ctypes.c_char.from_buffer(buf))
+        mock_memset.assert_any_call(ptr, 0x00, buf_len)
+        mock_memset.assert_any_call(ptr, 0xFF, buf_len)
         self.assertEqual(
             mock_memset.call_args_list,
             [
-                call(0xDEADBEEF, 0x00, buf_len),
-                call(0xDEADBEEF, 0xFF, buf_len),
-                call(0xDEADBEEF, 0x00, buf_len),
+                call(ptr, 0x00, buf_len),
+                call(ptr, 0xFF, buf_len),
+                call(ptr, 0x00, buf_len),
             ],
         )
 
@@ -93,9 +92,8 @@ class TestMemorySanitizer(unittest.TestCase):
         """
         buf = bytearray(b"SENSITIVE_KEY_DATA")
 
-        # Patch memset to do nothing (simulating hardware failure),
-        # and patch addressof to return a valid-looking address.
-        with patch("ctypes.addressof", return_value=0x1234), patch("ctypes.memset"):
+        # Patch memset to do nothing (simulating hardware failure)
+        with patch("ctypes.memset"):
             # buf still contains original data after a no-op memset.
             with self.assertRaises(MemoryIntegrityError):
                 MemorySanitizer.zeroize_buffer(buf)
