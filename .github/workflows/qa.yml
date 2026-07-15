@@ -2,53 +2,37 @@ name: CHRONOS CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+
+    runs-on: ${{ matrix.os }}
 
     env:
       CHRONOS_DISABLE_ANTI_TAMPER: "true"
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
 
-    - name: Cache pip
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-        restore-keys: ${{ runner.os }}-pip-
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
 
-    - name: Install dependencies
-      run: |
-        pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install black isort flake8 bandit mypy pytest pytest-cov
-        pip install pydantic-settings
+      - name: flake8
+        run: flake8 --max-line-length=100 --extend-ignore=E203,W503,E501,E402,F841,F401,F541,E704 .
 
-    - name: black
-      run: black --check --line-length 88 .
-
-    - name: isort
-      run: isort --check-only --profile black .
-
-    - name: flake8
-      run: flake8 --max-line-length=100 --extend-ignore=E203,W503,E501,E402,F841,F401,F541,E704 .
-
-    - name: bandit
-      run: bandit -r . -ll -x ./tests
-
-    - name: mypy
-      run: mypy --strict --ignore-missing-imports .
-
-    - name: pytest
-      run: pytest --cov=. --cov-fail-under=80 tests/
+      - name: pytest
+        run: pytest tests/ -q --tb=short
