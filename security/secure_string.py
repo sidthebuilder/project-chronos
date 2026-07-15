@@ -44,9 +44,7 @@ class ObfuscatedString:
 
     def __init__(self, plaintext: str) -> None:
         if not isinstance(plaintext, str):
-            raise TypeError(
-                f"ObfuscatedString requires a str, got {type(plaintext).__name__}"
-            )
+            raise TypeError(f"ObfuscatedString requires a str, got {type(plaintext).__name__}")
 
         # One 32-byte nonce per instance.  os.urandom() uses the OS CSPRNG
         # (CryptGenRandom on Windows, getrandom() on Linux ≥ 3.17).
@@ -78,9 +76,7 @@ class ObfuscatedString:
     # ------------------------------------------------------------------
 
     def __repr__(self) -> str:
-        return (
-            f"<ObfuscatedString len={len(self._masked)} nonce_id={id(self._nonce):#x}>"
-        )
+        return f"<ObfuscatedString len={len(self._masked)} nonce_id={id(self._nonce):#x}>"
 
     def __str__(self) -> str:
         return "<ObfuscatedString [REDACTED]>"

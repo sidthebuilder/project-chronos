@@ -53,15 +53,11 @@ class TestMemorySanitizer(unittest.TestCase):
     def test_real_wipe_zeroes_buffer(self) -> None:
         """The actual C-level wipe must leave every byte as 0x00."""
         buf = bytearray(os.urandom(256))
-        self.assertTrue(
-            any(b != 0 for b in buf), "Buffer was already all zeros before test."
-        )
+        self.assertTrue(any(b != 0 for b in buf), "Buffer was already all zeros before test.")
 
         MemorySanitizer.zeroize_buffer(buf)
 
-        self.assertTrue(
-            all(b == 0 for b in buf), "Buffer must be all zeros after wipe."
-        )
+        self.assertTrue(all(b == 0 for b in buf), "Buffer must be all zeros after wipe.")
 
     def test_rejects_immutable_bytes(self) -> None:
         """Passing immutable bytes must raise TypeError."""

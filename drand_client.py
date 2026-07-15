@@ -168,8 +168,7 @@ class DrandClient(IOracleClient):
         # a unit test or adversarial code.
         if not url.startswith("https://"):
             raise CryptographicSanityError(
-                f"SSRF guard triggered: drand URL scheme is not HTTPS.  "
-                f"URL: {url!r}"
+                f"SSRF guard triggered: drand URL scheme is not HTTPS.  " f"URL: {url!r}"
             )
 
         try:
@@ -181,9 +180,7 @@ class DrandClient(IOracleClient):
                 response = await client.get(url)
                 response.raise_for_status()
                 data: Dict[str, Any] = response.json()
-                _log.debug(
-                    f"drand round {data.get('round', '?')} fetched successfully."
-                )
+                _log.debug(f"drand round {data.get('round', '?')} fetched successfully.")
                 return data
 
         except httpx.RequestError as exc:
@@ -212,9 +209,7 @@ class DrandClient(IOracleClient):
         Raises:
             CryptographicSanityError: If BLS signature verification fails.
         """
-        _log.info(
-            f"Dead Man's Switch armed.  Waiting for drand round {target_round}..."
-        )
+        _log.info(f"Dead Man's Switch armed.  Waiting for drand round {target_round}...")
         backoff: int = polling_interval
 
         while True:
@@ -225,9 +220,7 @@ class DrandClient(IOracleClient):
                     continue
 
                 current_round: int = int(data.get("round", 0))
-                _log.debug(
-                    f"drand current round: {current_round} / target: {target_round}"
-                )
+                _log.debug(f"drand current round: {current_round} / target: {target_round}")
 
                 if current_round >= target_round:
                     self._verify_bls_signature(data)  # Raises on failure.
@@ -286,9 +279,7 @@ class DrandClient(IOracleClient):
         try:
             bytes.fromhex(sig_hex)
         except ValueError:
-            raise CryptographicSanityError(
-                "drand BLS signature is not valid hexadecimal."
-            )
+            raise CryptographicSanityError("drand BLS signature is not valid hexadecimal.")
 
         if not self._bls_available:
             _log.warning(
@@ -340,8 +331,8 @@ class DrandClient(IOracleClient):
             # The drand serialisation follows the IETF BLS draft (ZCash format):
             #   bytes 0-47:  x coordinate real part (with compression flag in MSB)
             #   bytes 48-95: x coordinate imaginary part
-            x0_bytes = pk_bytes[:48]   # real part (compression flags here)
-            x1_bytes = pk_bytes[48:]   # imaginary part
+            x0_bytes = pk_bytes[:48]  # real part (compression flags here)
+            x1_bytes = pk_bytes[48:]  # imaginary part
 
             flags = x0_bytes[0] & 0xE0
             x0_clean = bytes([x0_bytes[0] & 0x1F]) + x0_bytes[1:]

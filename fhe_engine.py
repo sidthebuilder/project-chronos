@@ -160,9 +160,7 @@ class PaillierCryptosystem:
             f"Public modulus n is {self.pub_key.n.bit_length()}-bit."
         )
 
-    def _generate_keypair(
-        self, bits: int
-    ) -> Tuple[PaillierPublicKey, PaillierPrivateKey]:
+    def _generate_keypair(self, bits: int) -> Tuple[PaillierPublicKey, PaillierPrivateKey]:
         """Generate a Paillier keypair.
 
         Primes are generated via cryptography's RSA generation for efficiency.
@@ -345,8 +343,7 @@ class PaillierFHEEngine(ICryptographicEngine):
             (ct_A, ct_B): A pair of Paillier ciphertexts.
         """
         _log.debug(
-            f"Encrypting demo payload under Paillier: "
-            f"A={self._DEMO_A}, B={self._DEMO_B}"
+            f"Encrypting demo payload under Paillier: " f"A={self._DEMO_A}, B={self._DEMO_B}"
         )
         ct_a = self.crypto.encrypt(self._DEMO_A)
         ct_b = self.crypto.encrypt(self._DEMO_B)

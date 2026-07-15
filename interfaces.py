@@ -281,6 +281,7 @@ class NoopSNARKProver:
         witness: Dict[str, Any],
     ) -> bytes:
         import warnings
+
         warnings.warn(
             "NoopSNARKProver.prove() called — no real Groth16 proof generated. "
             "This is a prototype stub. Do not use in production.",
@@ -295,6 +296,7 @@ class NoopSNARKProver:
         proof_bytes: bytes,
     ) -> bool:
         import warnings
+
         warnings.warn(
             "NoopSNARKProver.verify() called — stub always returns False "
             "unless the proof is the 192-zero sentinel from NoopSNARKProver.prove().",
@@ -312,6 +314,7 @@ class NoopVDFEngine:
 
     def setup(self, modulus_bits: int, num_parties: int) -> bytes:
         import warnings
+
         warnings.warn(
             "NoopVDFEngine.setup() — returning a dummy modulus (NOT from MPC). "
             "VDF sequentiality guarantee is NOT provided. Prototype only.",
@@ -319,10 +322,12 @@ class NoopVDFEngine:
         )
         # Return a dummy big-endian 256-byte integer (not a real RSA modulus).
         import os
+
         return os.urandom(modulus_bits // 8)
 
     def evaluate(self, g: int, T: int, N: bytes) -> Tuple[int, bytes]:
         import warnings
+
         warnings.warn(
             "NoopVDFEngine.evaluate() — returning dummy output. Not a real VDF.",
             stacklevel=2,

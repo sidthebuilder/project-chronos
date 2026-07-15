@@ -67,9 +67,7 @@ class TestDrandClient(unittest.IsolatedAsyncioTestCase):
         os.environ["CHRONOS_DISABLE_ANTI_TAMPER"] = "true"
 
         # Patch the public key constant in drand_client
-        self.pk_patcher = patch(
-            "drand_client._DRAND_QUICKNET_PUBLIC_KEY", _TEST_PK_HEX
-        )
+        self.pk_patcher = patch("drand_client._DRAND_QUICKNET_PUBLIC_KEY", _TEST_PK_HEX)
         self.pk_patcher.start()
 
         self.client = DrandClient()
@@ -181,9 +179,7 @@ class TestDrandClient(unittest.IsolatedAsyncioTestCase):
         self.assertGreaterEqual(result["round"], 100)
 
     @patch("drand_client.DrandClient.fetch_latest_round", new_callable=AsyncMock)
-    async def test_wait_for_round_retries_on_oracle_error(
-        self, mock_fetch: AsyncMock
-    ) -> None:
+    async def test_wait_for_round_retries_on_oracle_error(self, mock_fetch: AsyncMock) -> None:
         """wait_for_round() must retry (not raise) when OracleUnreachableError is thrown."""
         mock_fetch.side_effect = [
             OracleUnreachableError("timeout"),
@@ -191,8 +187,9 @@ class TestDrandClient(unittest.IsolatedAsyncioTestCase):
             {"round": 200, "signature": _VALID_SIG},
         ]
 
-        with patch("asyncio.sleep", new_callable=AsyncMock), patch.object(
-            self.client, "_verify_bls_signature"
+        with (
+            patch("asyncio.sleep", new_callable=AsyncMock),
+            patch.object(self.client, "_verify_bls_signature"),
         ):
             result = await self.client.wait_for_round(200, polling_interval=1)
 

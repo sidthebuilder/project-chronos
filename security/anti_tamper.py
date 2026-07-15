@@ -158,9 +158,7 @@ class AntiTamperEngine:
             self._abort_process("LINUX_PTRACE: TracerPid != 0 in /proc/self/status")
 
         if self._detect_timing_anomaly():
-            self._abort_process(
-                "TIMING_ANOMALY: execution rate inconsistent with hardware"
-            )
+            self._abort_process("TIMING_ANOMALY: execution rate inconsistent with hardware")
 
     # ------------------------------------------------------------------
     # Heuristic implementations

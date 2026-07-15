@@ -67,3 +67,6 @@ paper_extracted.txt
 *.bat
 push_to_github.bat
 real_results.md
+generate_pdf.py
+CHRONOS_PAPER_v2.pdf
+CHRONOS_PAPER_v2.html

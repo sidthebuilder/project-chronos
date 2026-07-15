@@ -18,7 +18,6 @@ import sys
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Suppress the anti-tamper engine in all tests — it would fire on pytest's trace hook.
@@ -50,6 +49,7 @@ def _make_agent(duration_sec: int = 3) -> ChronosAgent:
 
     # SNARK prover stub — NoopSNARKProver returns 192 zero bytes
     from interfaces import NoopSNARKProver
+
     mock_snark = NoopSNARKProver()
 
     return ChronosAgent(
@@ -170,9 +170,7 @@ class TestChronosAgentMission(unittest.IsolatedAsyncioTestCase):
         mock_anti.stop.assert_called_once()
 
     @patch("chronos_agent.MemorySanitizer.zeroize_buffer")
-    async def test_sanity_failed_on_chunk_larger_than_q(
-        self, mock_wipe: MagicMock
-    ) -> None:
+    async def test_sanity_failed_on_chunk_larger_than_q(self, mock_wipe: MagicMock) -> None:
         """Should raise CryptographicSanityError if a chunk is >= q."""
         agent = _make_agent()
         from exceptions import CryptographicSanityError
@@ -182,9 +180,7 @@ class TestChronosAgentMission(unittest.IsolatedAsyncioTestCase):
                 await agent.run_mission()
 
     @patch("chronos_agent.MemorySanitizer.zeroize_buffer")
-    async def test_sanity_failed_on_invalid_schnorr_proof(
-        self, mock_wipe: MagicMock
-    ) -> None:
+    async def test_sanity_failed_on_invalid_schnorr_proof(self, mock_wipe: MagicMock) -> None:
         """Should raise CryptographicSanityError if Schnorr proof fails verification."""
 
         def _do_wipe(buf: bytearray) -> None:

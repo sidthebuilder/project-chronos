@@ -84,9 +84,7 @@ class TestE2ELifecycle(unittest.IsolatedAsyncioTestCase):
         os.environ["CHRONOS_DISABLE_ANTI_TAMPER"] = "true"
 
         # Patch the public key constant in drand_client
-        self.pk_patcher = patch(
-            "drand_client._DRAND_QUICKNET_PUBLIC_KEY", _TEST_PK_HEX
-        )
+        self.pk_patcher = patch("drand_client._DRAND_QUICKNET_PUBLIC_KEY", _TEST_PK_HEX)
         self.pk_patcher.start()
 
     def tearDown(self) -> None:
@@ -271,8 +269,9 @@ class TestE2ELifecycle(unittest.IsolatedAsyncioTestCase):
         posw = PoSWManager(target_duration_seconds=1)
         drand = DrandClient()
 
-        with patch("chronos_agent.DISABLE_ANTI_TAMPER", False), patch(
-            "security.anti_tamper.AntiTamperEngine.start"
+        with (
+            patch("chronos_agent.DISABLE_ANTI_TAMPER", False),
+            patch("security.anti_tamper.AntiTamperEngine.start"),
         ):
             agent = ChronosAgent(
                 fhe_engine=fhe, posw_manager=posw, drand=drand, mission_duration_sec=1

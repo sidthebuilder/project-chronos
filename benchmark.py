@@ -43,11 +43,10 @@ from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from drand_client import DrandClient      # noqa: E402
+from drand_client import DrandClient  # noqa: E402
 from fhe_engine import PaillierFHEEngine, decrypt  # noqa: E402
 from memory_sanitizer import MemorySanitizer  # noqa: E402
-from posw import PoSWManager              # noqa: E402
-
+from posw import PoSWManager  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Statistical helpers
@@ -69,10 +68,23 @@ def _t_critical_95(df: int) -> float:
     For df >= 120 the value converges to 1.96 (normal approximation).
     """
     _table = {
-        1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571,
-        6: 2.447,  7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228,
-        15: 2.131, 20: 2.086, 25: 2.060, 30: 2.042, 40: 2.021,
-        60: 2.000, 120: 1.980,
+        1: 12.706,
+        2: 4.303,
+        3: 3.182,
+        4: 2.776,
+        5: 2.571,
+        6: 2.447,
+        7: 2.365,
+        8: 2.306,
+        9: 2.262,
+        10: 2.228,
+        15: 2.131,
+        20: 2.086,
+        25: 2.060,
+        30: 2.042,
+        40: 2.021,
+        60: 2.000,
+        120: 1.980,
     }
     for threshold in sorted(_table.keys(), reverse=True):
         if df >= threshold:
@@ -225,12 +237,18 @@ def run_benchmark(runs: int = 10) -> None:
     kg_m, kg_ci = fhe_metrics["keygen_mean"], fhe_metrics["keygen_ci95"]
     en_m, en_ci = fhe_metrics["enc_mean"], fhe_metrics["enc_ci95"]
     ev_m, ev_ci = fhe_metrics["eval_mean"], fhe_metrics["eval_ci95"]
-    print(f"      Key gen   : {_fmt_ms(kg_m)} ± {_fmt_ms(fhe_metrics['keygen_std'])} "
-          f"[95% CI ±{_fmt_ms(kg_ci)}]")
-    print(f"      Encrypt   : {_fmt_ms(en_m)} ± {_fmt_ms(fhe_metrics['enc_std'])} "
-          f"[95% CI ±{_fmt_ms(en_ci)}]")
-    print(f"      HE eval   : {_fmt_ms(ev_m)} ± {_fmt_ms(fhe_metrics['eval_std'])} "
-          f"[95% CI ±{_fmt_ms(ev_ci)}]")
+    print(
+        f"      Key gen   : {_fmt_ms(kg_m)} ± {_fmt_ms(fhe_metrics['keygen_std'])} "
+        f"[95% CI ±{_fmt_ms(kg_ci)}]"
+    )
+    print(
+        f"      Encrypt   : {_fmt_ms(en_m)} ± {_fmt_ms(fhe_metrics['enc_std'])} "
+        f"[95% CI ±{_fmt_ms(en_ci)}]"
+    )
+    print(
+        f"      HE eval   : {_fmt_ms(ev_m)} ± {_fmt_ms(fhe_metrics['eval_std'])} "
+        f"[95% CI ±{_fmt_ms(ev_ci)}]"
+    )
     print(
         f"      E(100)+E(50)=E({fhe_metrics['decrypted_result']})  "
         f"{'SUCCESS' if fhe_metrics['math_correct'] else 'FAILED'}"
@@ -242,9 +260,7 @@ def run_benchmark(runs: int = 10) -> None:
         print(f"      Latency   : {_fmt_ms(drand_metrics['latency_sec'])}")
         print(f"      Round     : {drand_metrics['round']}")
     else:
-        print(
-            f"      OFFLINE - drand unreachable: {drand_metrics.get('error', 'unknown')}"
-        )
+        print(f"      OFFLINE - drand unreachable: {drand_metrics.get('error', 'unknown')}")
 
     print(f"[4/4] Measuring memory wipe (64 KB, {runs} runs)...")
     wipe_metrics = _measure_memory_wipe(size_kb=64, runs=runs)
@@ -263,8 +279,7 @@ def run_benchmark(runs: int = 10) -> None:
         )
     else:
         drand_section = (
-            f"- **Oracle Status**: ✗ Offline "
-            f"(`{drand_metrics.get('error', 'unknown')}`)"
+            f"- **Oracle Status**: ✗ Offline " f"(`{drand_metrics.get('error', 'unknown')}`)"
         )
 
     report = f"""# CHRONOS — Real-World Performance Metrics

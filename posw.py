@@ -395,9 +395,7 @@ class PoSWManager:
             )
 
         if checkpoints is None:
-            raise RuntimeError(
-                "PoSW worker process exited without producing checkpoints."
-            )
+            raise RuntimeError("PoSW worker process exited without producing checkpoints.")
 
         # Build the real binary Merkle tree over the raw checkpoint leaves.
         tree = MerkleTree(checkpoints)
@@ -405,9 +403,7 @@ class PoSWManager:
 
         # Drift analysis — compare actual elapsed vs. calibrated target.
         if self.target_duration_seconds > 0:
-            drift = (
-                elapsed - self.target_duration_seconds
-            ) / self.target_duration_seconds
+            drift = (elapsed - self.target_duration_seconds) / self.target_duration_seconds
             if abs(drift) > _DRIFT_WARNING_THRESHOLD:
                 self._log.warning(
                     f"[POSW DRIFT] Elapsed {elapsed:.3f}s vs target "
@@ -487,9 +483,7 @@ class PoSWManager:
             ValueError: If compute_posw() has not been called yet.
         """
         if self._proof is None:
-            raise ValueError(
-                "verify_checkpoint() called before compute_posw() completed."
-            )
+            raise ValueError("verify_checkpoint() called before compute_posw() completed.")
         tree = MerkleTree(self._proof.checkpoints)
         proof = tree.prove(leaf_index)
         return MerkleTree.verify(proof)
