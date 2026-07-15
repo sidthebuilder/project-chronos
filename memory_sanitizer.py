@@ -55,7 +55,6 @@ Exclusivity Assumption (EA) — mlock():
 
 import ctypes
 import os
-import sys
 from typing import Any
 
 from exceptions import MemoryIntegrityError
@@ -92,9 +91,7 @@ def mlock_buffer(buffer: bytearray) -> bool:
                 kernel32.VirtualLock(ctypes.c_void_p(ptr), ctypes.c_size_t(size))
             )
             if result:
-                _log.info(
-                    f"VirtualLock: {size} bytes pinned to physical RAM at {ptr:#018x}"
-                )
+                _log.info(f"VirtualLock: {size} bytes pinned to physical RAM at {ptr:#018x}")
             else:
                 _log.warning(
                     f"VirtualLock failed (error={kernel32.GetLastError()}).  "
@@ -118,9 +115,7 @@ def mlock_buffer(buffer: bytearray) -> bool:
                 )
                 return False
     except Exception as exc:
-        _log.warning(
-            f"mlock_buffer: platform call unavailable ({exc}).  EA not enforced."
-        )
+        _log.warning(f"mlock_buffer: platform call unavailable ({exc}).  EA not enforced.")
         return False
 
 
@@ -196,9 +191,7 @@ class MemorySanitizer:
 
         if wiped_bytes != expected:
             # Find the first failing byte for diagnostic purposes.
-            failed_at: int = next(
-                (i for i, b in enumerate(wiped_bytes) if b != 0), -1
-            )
+            failed_at: int = next((i for i, b in enumerate(wiped_bytes) if b != 0), -1)
             raise MemoryIntegrityError(
                 f"Triple-pass wipe verification failed: byte at index {failed_at} "
                 f"is {wiped_bytes[failed_at]:#04x} after erasure.  "

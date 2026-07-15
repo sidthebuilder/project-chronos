@@ -176,16 +176,13 @@ class ChronosAgent:
             )
 
         current_round: int = int(current["round"])
-        rounds_to_wait: int = max(
-            1, self.mission_duration_sec // DRAND_ROUND_INTERVAL_SEC
-        )
+        rounds_to_wait: int = max(1, self.mission_duration_sec // DRAND_ROUND_INTERVAL_SEC)
         self.target_round = current_round + rounds_to_wait
 
         _log.info(f"Mission duration   : {self.mission_duration_sec}s")
         _log.info(f"Current drand round: {current_round}")
         _log.info(
-            f"Target deadline    : round {self.target_round} "
-            f"(+{rounds_to_wait} rounds)"
+            f"Target deadline    : round {self.target_round} " f"(+{rounds_to_wait} rounds)"
         )
 
     # ------------------------------------------------------------------
@@ -265,8 +262,7 @@ class ChronosAgent:
             MemoryIntegrityError:     If the memory wipe is incomplete.
         """
         _log.info(
-            "Step 4a: Computing Fiat-Shamir NIZK pre-erasure commitments "
-            "for key chunks..."
+            "Step 4a: Computing Fiat-Shamir NIZK pre-erasure commitments " "for key chunks..."
         )
 
         p: int = ZERO_KNOWLEDGE_PRIME
@@ -332,12 +328,10 @@ class ChronosAgent:
         self._verify_commitments(commitments=commitments, p=p, g=g, q=q)
 
         # Step 4e — SNARK erasure proof (stub).
-        _log.info(
-            "Step 4e: Generating SNARK erasure proof (ISNARKProver)..."
-        )
+        _log.info("Step 4e: Generating SNARK erasure proof (ISNARKProver)...")
         _snark_proof = self._snark_prover.prove(
-            public_inputs={},   # In production: N, g, T, salt, ct_sk, C_sk, R_M
-            witness={},         # In production: pi_vdf, y, K_enc, sk, M_pre, M_post
+            public_inputs={},  # In production: N, g, T, salt, ct_sk, C_sk, R_M
+            witness={},  # In production: pi_vdf, y, K_enc, sk, M_pre, M_post
         )
         _log.info(
             f"SNARK proof generated ({len(_snark_proof)} bytes). "
@@ -447,8 +441,7 @@ class ChronosAgentFactory:
 async def _async_main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Project CHRONOS: Autonomous Cryptographic Agent with "
-            "Provable Memory Erasure"
+            "Project CHRONOS: Autonomous Cryptographic Agent with " "Provable Memory Erasure"
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -468,6 +461,7 @@ async def _async_main() -> None:
 def main() -> None:
     """Synchronous entry point for the CLI."""
     asyncio.run(_async_main())
+
 
 if __name__ == "__main__":
     main()

@@ -11,7 +11,7 @@ avoid pipe buffer deadlock when the checkpoint list is large (D4 fix).
 import os
 import sys
 import unittest
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 from posw import MerkleTree, PoSWManager, PoSWProof, _posw_worker
 
