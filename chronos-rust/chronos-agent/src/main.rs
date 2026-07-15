@@ -1,6 +1,6 @@
 use chronos_core::memory::SecureString;
 use chronos_core::tamper::AntiTamper;
-use chronos_crypto::fhe::{FheEngine, DummyFhe};
+use chronos_crypto::fhe::{FheEngine, PrototypeFhe};
 use chronos_crypto::snark::{SnarkProver, NoopSnarkProver};
 use chronos_crypto::vdf::{VdfEngine, PoswVdf};
 use chronos_net::drand::DrandClient;
@@ -22,7 +22,7 @@ async fn main() -> anyhow::Result<()> {
     
     // 2. Setup Secure Memory & FHE
     println!("[2/5] Initializing secure memory and FHE engines...");
-    let fhe = DummyFhe;
+    let fhe = PrototypeFhe::new();
     let (pk, sk) = fhe.keygen();
     
     // Bind secret key to the strictly zeroized scope (SecureString)

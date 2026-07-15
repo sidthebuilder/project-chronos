@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 sha2.workspace = true
 hex.workspace = true
+kzen-paillier = "0.4.3"
