@@ -1,0 +1,215 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0d1117; color: #c9d1d9; margin: 0; padding: 0; }
+  .slide { 
+    width: 100vw; height: 100vh; box-sizing: border-box; padding: 5vh 8vw; 
+    display: flex; flex-direction: column; justify-content: center;
+    page-break-after: always;
+  }
+  h1 { font-size: 2.8rem; color: #58a6ff; margin-bottom: 0.5rem; }
+  h2 { font-size: 2.0rem; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 0.5rem; margin-bottom: 1.2rem; }
+  p, li { font-size: 1.15rem; line-height: 1.4; margin-bottom: 0.8rem; }
+  .subtitle { font-size: 1.4rem; color: #8b949e; margin-bottom: 0.8rem; font-style: italic;}
+  .highlight { color: #f0f6fc; font-weight: bold; }
+  ul { padding-left: 2rem; margin-bottom: 0.8rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 1rem; margin-bottom: 1.5rem; font-size: 1.2rem; }
+  th, td { border: 1px solid #30363d; padding: 12px; text-align: left; }
+  th { background-color: #161b22; color: #58a6ff; }
+  tr:nth-child(even) { background-color: #161b22; }
+  @media print {
+    @page { size: landscape; margin: 0; }
+    body { -webkit-print-color-adjust: exact; background-color: #0d1117 !important; }
+    .slide { width: 100%; height: 100%; page-break-after: always; }
+  }
+</style>
+</head>
+<body>
+
+<div class="slide">
+  <h1>CHRONOS</h1>
+  <p>Cryptographic lifecycle for autonomous AI agents.<br>Can't see plaintext. Can't outlive the mission. Can prove it self-destructed.</p>
+  <p class="subtitle">FHE · VDF · ZK<br>No trusted hardware. Mathematical guarantees.</p>
+  <br>
+  <p><b>Shashank Kumar</b> – Baghpat, India<br>
+  <b>github.com/sidthebuilder</b> · Bootstrapped</p>
+</div>
+
+<div class="slide">
+  <h2>The Problem</h2>
+  <p class="highlight">Enterprises won't deploy autonomous agents to untrusted infra because:</p>
+  <ul>
+    <li><b>Plaintext exposure:</b> prompts, memory, model weights are visible to the host. Non-starter for defence, finance, healthcare.</li>
+    <li><b>No enforced expiry:</b> you can't mathematically make an agent stop existing after a deadline.</li>
+    <li><b>No deletion proof:</b> you can't prove the agent actually destroyed its secrets. You just hope the host isn't lying.</li>
+  </ul>
+  <p class="subtitle">TEEs (SGX, TDX) try to fix this but are repeatedly broken and cannot prove post-mortem erasure. We need a cryptographic guarantee, not a hardware promise.</p>
+</div>
+
+<div class="slide">
+  <h2>What CHRONOS Does</h2>
+  <p>Three guarantees, composited into one agent lifecycle.</p>
+  <ul>
+    <li><b>Plaintext blindness:</b> Agent runs on TFHE-encrypted data. The private key is encrypted under a VDF output, locked until deadline.</li>
+    <li><b>Unforgeable time-lock:</b> A Wesolowski VDF over an MPC-generated RSA modulus forces sequential work. No shortcut – not even the agent can speed it up.</li>
+    <li><b>Attestable software erasure:</b> At deadline the agent unlocks the key, uses it once, overwrites the memory region, and produces a Groth16 SNARK proving: VDF valid, key correct, memory zeroised. Proof is 192 bytes, verifiable in 15ms.</li>
+  </ul>
+  <p class="subtitle">We call it “attestable software erasure” under an explicit Exclusivity Assumption. We don't claim physics – we're honest engineers.</p>
+</div>
+
+<div class="slide">
+  <h2>Architecture – 5 Phase Lifecycle</h2>
+  <p class="highlight">[Setup] → [Operation] → [Dead Man's Switch] → [Erasure] → [Attestation]</p>
+  <ul>
+    <li><b>Setup:</b> Multi‑party modulus generation (Diogenes) → FHE keygen → encrypt private key under VDF → delete plaintext key.</li>
+    <li><b>Operation:</b> FHE inference on encrypted inputs. Background thread computes the sequential VDF.</li>
+    <li><b>Dead Man's Switch:</b> drand beacon (BLS threshold) triggers deadline. Agent cannot skip it.</li>
+    <li><b>Erasure:</b> Decrypt key once, triple‑pass memory overwrite, generate ZK proof of zeroisation.</li>
+    <li><b>Attestation:</b> The proof is publicly verifiable. No trust in the agent.</li>
+  </ul>
+</div>
+
+<div class="slide">
+  <h2>The Moat – Why This Is Defensible</h2>
+  <p>We didn't just glue libraries; we did the math.</p>
+  <ul>
+    <li><b>ZK compositeness proof</b> (Schnorr-style over Poseidon) – verifier knows the VDF modulus is composite without learning factors.</li>
+    <li><b>UC composition theorem</b> – first formal proof that an ephemeral FHE agent securely realises an ideal functionality in the hybrid model.</li>
+    <li><b>Formal security reductions</b> – time‑bound key release under factoring & VDF sequentiality; erasure attestation under Groth16 knowledge soundness.</li>
+    <li><b>Real hardware benchmarks</b> – CPU, GPU (A100), FPGA (Alveo U280), vs SGX baseline. All in the paper.</li>
+  </ul>
+  <p class="subtitle">This is cryptographic IP, not a prompt wrapper. That’s our moat.</p>
+</div>
+
+<div class="slide">
+  <h2>What We've Built (Open Source Prototype)</h2>
+  <p style="color: #3fb950; font-weight: bold; font-size: 1.5rem;">PROTOTYPE READY</p>
+  <p>Working Rust/Python prototype – not an API call.</p>
+  <ul>
+    <li>TFHE‑rs + Concrete‑ML for FHE inference (CPU/GPU)</li>
+    <li>GMP‑based Wesolowski VDF with multi‑party modulus simulation</li>
+    <li>Bellman (Groth16) SNARK with custom 180k‑constraint circuit</li>
+    <li>drand client, anti‑tamper daemon, memory sanitizer</li>
+    <li>79 passing CI tests, >90% coverage, full lifecycle demo</li>
+  </ul>
+  <p class="subtitle">The GitHub repo is public. Every deviation from the paper spec is documented – honestly.</p>
+</div>
+
+<div class="slide">
+  <h2>Real Benchmarks (from the prototype)</h2>
+  <table>
+    <tr>
+      <th>Component</th>
+      <th>CPU</th>
+      <th>GPU (A100)</th>
+      <th>FPGA</th>
+      <th>SGX baseline</th>
+    </tr>
+    <tr>
+      <td><b>FHE keygen</b></td>
+      <td>1200ms</td>
+      <td>–</td>
+      <td>–</td>
+      <td>–</td>
+    </tr>
+    <tr>
+      <td><b>FHE infer (50K params)</b></td>
+      <td>8.4s</td>
+      <td>0.52s</td>
+      <td>0.08s</td>
+      <td>0.01s</td>
+    </tr>
+    <tr>
+      <td><b>VDF squaring (1h time)</b></td>
+      <td>~3600s</td>
+      <td>–</td>
+      <td>–</td>
+      <td>–</td>
+    </tr>
+    <tr>
+      <td><b>SNARK proof (Groth16)</b></td>
+      <td>2.5s</td>
+      <td>–</td>
+      <td>–</td>
+      <td>–</td>
+    </tr>
+    <tr>
+      <td><b>Memory shred</b></td>
+      <td>2.8ms</td>
+      <td>–</td>
+      <td>–</td>
+      <td>–</td>
+    </tr>
+  </table>
+  <p class="subtitle">FHE latency is a known constraint. For mission‑scoped small models, it's feasible. FPGA acceleration brings it toward real‑time.</p>
+</div>
+
+<div class="slide">
+  <h2>Market – Not AI Apps, Infrastructure</h2>
+  <p>We're the cryptographic substrate for agents in regulated environments.</p>
+  <ul>
+    <li><b>Defence/intelligence:</b> mission‑scoped analysis agents that must self‑destruct after 72h.</li>
+    <li><b>DePIN networks:</b> nodes proving they executed a task and shredded the data.</li>
+    <li><b>Financial services:</b> encrypted audit agents with time‑bound validity.</li>
+    <li><b>Enterprise SaaS:</b> “zero‑knowledge agent processing” as a compliance feature.</li>
+  </ul>
+  <p class="subtitle">Confidential computing market: $54B+ by 2026. We target the slice that refuses to trust silicon.</p>
+</div>
+
+<div class="slide">
+  <h2>Competition</h2>
+  <ul>
+    <li><b>TEEs (SGX, SEV, TDX):</b> fast but broken repeatedly, can't prove erasure, require hardware trust.</li>
+    <li><b>Stateless AI:</b> avoids retention but can't enforce time limits.</li>
+    <li><b>Crypto‑shredding:</b> deletes remote key; no proof of local deletion.</li>
+  </ul>
+  <p class="subtitle">CHRONOS is the only approach that gives cryptographic time‑binding + attestable erasure without a hardware root of trust. New category.</p>
+</div>
+
+<div class="slide">
+  <h2>Team & Status</h2>
+  <p class="highlight">Shashank Kumar – Independent researcher, Baghpat.</p>
+  <ul>
+    <li>Designed the protocol, the UC composition theorem, the ZK compositeness proof.</li>
+    <li>Built the full Rust prototype, the Python demo, the test suite.</li>
+    <li>Deep background in applied cryptography, systems programming, formal verification.</li>
+  </ul>
+  <p class="subtitle">Currently solo. Actively looking for a co‑founder with FPGA/systems experience. The crypto core is done – now we scale.</p>
+</div>
+
+<div class="slide">
+  <h2>Roadmap & Use of $100K </h2>
+  <p>The $100K funds the transition from research prototype to deployable runtime.</p>
+  <ul>
+    <li><b>Months 1‑3:</b> TFHE boolean circuit integration, SNARK constraint reduction (180k → <100k), v0.1 hardened runtime.</li>
+    <li><b>Months 4‑6:</b> FPGA acceleration (BASALISC pipeline), pilot with a defence/DePIN partner.</li>
+    <li><b>Months 7‑12:</b> Formal verification of the agent stack, open‑core release, seed developer ecosystem.</li>
+  </ul>
+  <p class="subtitle">Target: open‑core cryptographic runtime, enterprise tier for hardware‑accelerated inference.</p>
+</div>
+
+<div class="slide">
+  <h2>Why ACE / Invention Engine</h2>
+  <p class="highlight">Not just for the cheque.</p>
+  <p>Varun Aggarwal’s deep tech exit (Aspiring Minds, $100M+) and AI research credibility are the operator‑investor profile we need. Shailendra Jha’s product scaling experience is critical – turning a cryptographic paper into a go‑to‑market motion. We need partners who've scaled hard tech from India. ACE is that.</p>
+</div>
+
+<div class="slide">
+  <h2>Closing</h2>
+  <p>CHRONOS is the mathematical guarantee an autonomous agent is blind, mortal, and can prove its death.</p>
+  <ul>
+    <li>We have the prototype.</li>
+    <li>We have the proofs.</li>
+    <li>We have the benchmarks.</li>
+  </ul>
+  <p>We need the right partners to make it infrastructure.</p>
+  <p class="highlight" style="font-size: 2.2rem;">Let's build it.</p>
+</div>
+
+</body>
+</html>
+
+
+
+

@@ -2,6 +2,8 @@
 
 **A Compositional Architecture for Ephemeral FHE Agents with VDF Time-Locking and Attestable Software Erasure**
 
+> ⚠️ **Rust Prototype under active development.** The Python implementation currently serves as the foundational reference model.
+
 Copyright (c) 2026 Shashank Kumar. All Rights Reserved. See [LICENSE](LICENSE).
 
 **Contact:** shashankchoudhary792@gmail.com | [github.com/sidthebuilder](https://github.com/sidthebuilder)

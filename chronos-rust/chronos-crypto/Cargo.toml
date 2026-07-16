@@ -5,3 +5,8 @@ edition = "2021"
 
 [dependencies]
 sha2.workspace = true
+kzen-paillier.workspace = true
+num-bigint = { workspace = true, features = ["rand"] }
+num-traits.workspace = true
+curve25519-dalek = { workspace = true, features = ["rand_core"] }
+rand.workspace = true

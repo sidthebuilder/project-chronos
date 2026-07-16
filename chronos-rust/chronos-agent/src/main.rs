@@ -1,10 +1,11 @@
 use chronos_core::memory::SecureString;
 use chronos_core::tamper::AntiTamper;
 use chronos_crypto::fhe::{FheEngine, PrototypeFhe};
-use chronos_crypto::snark::{ErasureCommitter, HashCommitter};
-use chronos_crypto::vdf::{VdfEngine, PoswVdf};
+use chronos_crypto::snark::{NizkProver, SchnorrNizk};
+use chronos_crypto::vdf::{VdfEngine, WesolowskiVdf};
 use chronos_net::drand::DrandClient;
-use sha2::{Digest, Sha256};
+use num_bigint::BigUint;
+use num_traits::Num;
 use tokio::time::{sleep, Duration};
 
 #[tokio::main]
@@ -26,29 +27,33 @@ async fn main() -> anyhow::Result<()> {
     println!("      Beacon round: {}", beacon.round);
 
     // Step 2: Key generation and secure memory.
-    println!("[2/5] Generating FHE keypair, pinning secret key to secure memory...");
+    println!("[2/5] Generating Paillier FHE keypair, pinning secret key to secure memory...");
     let fhe = PrototypeFhe;
     let keypair = fhe.keygen();
-    // secret_bytes() exposes d only as raw bytes — d field itself is private.
-    // Compute hash BEFORE moving bytes into SecureString so the key
-    // never exists unguarded in two heap locations simultaneously.
-    // NOTE: Vec<u8> stack metadata (ptr/len/cap) is not zeroized by Drop.
-    // Only the heap bytes are wiped. Acceptable for this prototype.
-    let sk_bytes = keypair.secret_bytes().to_vec();
-    let key_hash: [u8; 32] = Sha256::digest(&sk_bytes).into();
-    let _secure_sk = SecureString::new(sk_bytes);
-    println!("      n={}, e={} (d pinned in SecureString)", keypair.n, keypair.e);
+    // secret_bytes() now returns the 32-byte entropy seed for the Schnorr NIZK
+    let sk_bytes = keypair.secret_bytes();
+    
+    // Create the secure memory wrapper BEFORE executing the mission
+    let _secure_sk = SecureString::new(sk_bytes.clone());
+    println!("      Keypair pinned in SecureString. Additive Homomorphism ready.");
 
     // Step 3: Spawn VDF time-lock on a dedicated blocking thread.
-    println!("[3/5] Spawning VDF time-lock (10M iterations)...");
+    // We use a hardcoded 1024-bit RSA modulus for the Wesolowski VDF prototype.
+    let vdf_n_hex = "\
+        c4b36f86b7188b1f4df4f661df2c70c1e847cd3b9b4625b5969542a27fc7e8a9\
+        155ebc402175c5e89d1b09b0b46321b19901f468249fc21370211ff1a134a65b\
+        308a3d5f992a5d7c30f40a1b8e622b7a421b332b5dc98a2806b0b2b801a6b0c2\
+        8fc07914f6b0b533f81e3a6cd2ab5f8992a54fb22b9b5f543cb6824b22b10a29";
+    let vdf_n = BigUint::from_str_radix(vdf_n_hex, 16).unwrap();
     let vdf_seed = beacon.randomness.as_bytes().to_vec();
+
+    println!("[3/5] Spawning Wesolowski VDF time-lock (10k sequential squarings)...");
     let vdf_handle = tokio::task::spawn_blocking(move || {
-        let vdf = PoswVdf;
-        vdf.evaluate(&vdf_seed, 10_000_000)
+        let vdf = WesolowskiVdf { n: vdf_n };
+        vdf.evaluate(&vdf_seed, 10_000)
     });
 
     // Step 4: Spawn AntiTamper on a dedicated OS thread — NOT from async.
-    // Tokio scheduler jitter causes false positives when called from an async task.
     println!("[4/5] Spawning anti-tamper daemon on dedicated OS thread...");
     let (tamper_tx, tamper_rx) = std::sync::mpsc::channel::<bool>();
     std::thread::spawn(move || {
@@ -63,26 +68,25 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // Execute mission under FHE using beacon randomness as inputs.
-    // Ties the computation to the external randomness — not hardcoded constants.
     let beacon_bytes = beacon.randomness.as_bytes();
-    let m1 = (beacon_bytes[0] as u64 % 50) + 2; // range 2..51, always < n=3233
+    let m1 = (beacon_bytes[0] as u64 % 50) + 2; 
     let m2 = (beacon_bytes[1] as u64 % 50) + 2;
     let c1 = fhe.encrypt(&keypair, m1);
     let c2 = fhe.encrypt(&keypair, m2);
-    let c_product = fhe.homomorphic_mul(&keypair, c1, c2);
-    let decrypted_product = fhe.decrypt(&keypair, c_product);
+    
+    // Homomorphic ADDITION (Paillier), not multiplication
+    let c_sum = fhe.homomorphic_add(&keypair, &c1, &c2);
+    let decrypted_sum = fhe.decrypt(&keypair, &c_sum);
     println!(
-        "      E({}) * E({}) -> decrypt -> {} (expected {})",
-        m1, m2, decrypted_product, m1 * m2
+        "      E({}) + E({}) -> decrypt -> {} (expected {})",
+        m1, m2, decrypted_sum, m1 + m2
     );
-    // BUG 1 FIX: controlled return instead of assert_eq! (panic bypasses clean Drop
-    // on some unwind configurations, leaving key in memory).
-    if decrypted_product != m1 * m2 {
-        eprintln!("FATAL: FHE integrity check failed. Triggering erasure.");
+    
+    if decrypted_sum != m1 + m2 {
+        eprintln!("FATAL: Paillier FHE integrity check failed. Triggering erasure.");
         return Ok(());
     }
 
-    // Check tamper signal (non-blocking poll).
     if tamper_rx.try_recv().unwrap_or(false) {
         eprintln!("FATAL: Tamper detected. Triggering immediate erasure.");
         return Ok(());
@@ -91,16 +95,21 @@ async fn main() -> anyhow::Result<()> {
     sleep(Duration::from_millis(50)).await;
 
     // Step 5: Await VDF expiry and commit to key erasure.
-    println!("[5/5] Awaiting VDF time-lock...");
-    let vdf_output = vdf_handle.await?;
-    println!("      VDF output length: {} bytes", vdf_output.len());
+    println!("[5/5] Awaiting Wesolowski VDF time-lock...");
+    let proof = vdf_handle.await?;
+    println!("      VDF Proof generated: pi length = {} bytes", proof.pi.len());
 
-    // Hash commitment over the key before erasure.
-    // See snark.rs for honest description of what this proves.
-    let committer = HashCommitter;
-    let commitment = committer.commit(_secure_sk.as_bytes());
-    let verified = committer.verify(&key_hash, &commitment);
-    println!("      Erasure commitment verified: {}", verified);
+    // Schnorr NIZK over the key before erasure.
+    println!("      Generating Schnorr NIZK proof of secret key possession...");
+    let prover = SchnorrNizk;
+    let mut sk_array = [0u8; 32];
+    let secure_bytes = _secure_sk.as_bytes();
+    let len = std::cmp::min(secure_bytes.len(), 32);
+    sk_array[..len].copy_from_slice(&secure_bytes[..len]);
+    
+    let nizk_proof = prover.prove(&sk_array);
+    let verified = prover.verify(&nizk_proof);
+    println!("      Schnorr NIZK verified: {}", verified);
 
     println!("=== AGENT LIFECYCLE COMPLETE ===");
     // `_secure_sk` drops here -> triple-pass volatile zeroization of heap bytes.
