@@ -43,14 +43,14 @@ impl FheEngine for PrototypeFhe {
         use kzen_paillier::{BigInt as KzenBigInt, RawPlaintext, RawCiphertext};
         
         let m_str = m.to_string();
-        let m_kzen = KzenBigInt::from_str_radix(&m_str, 10).unwrap();
+        let m_kzen = <KzenBigInt as Converter>::from_str_radix(&m_str, 10).unwrap();
         let pt = RawPlaintext::from(m_kzen);
         let ct: RawCiphertext = Paillier::encrypt(&key.ek, pt);
         
         let ct_big: KzenBigInt = ct.into();
         let ct_hex = ct_big.to_hex();
         
-        let ct_num = NumBigInt::from_str_radix(&ct_hex, 16).unwrap();
+        let ct_num = <NumBigInt as num_traits::Num>::from_str_radix(&ct_hex, 16).unwrap();
         ct_num.to_bytes_le().1
     }
 
@@ -70,7 +70,7 @@ impl FheEngine for PrototypeFhe {
         let m_kzen: KzenBigInt = pt.into();
         let m_hex = m_kzen.to_hex();
         
-        let m_num = NumBigInt::from_str_radix(&m_hex, 16).unwrap();
+        let m_num = <NumBigInt as num_traits::Num>::from_str_radix(&m_hex, 16).unwrap();
         let m_str = m_num.to_string();
         m_str.parse::<u64>().unwrap_or(0)
     }
@@ -97,7 +97,7 @@ impl FheEngine for PrototypeFhe {
         let c_sum_kzen: KzenBigInt = c_sum.into();
         
         let sum_hex = c_sum_kzen.to_hex();
-        let sum_num = NumBigInt::from_str_radix(&sum_hex, 16).unwrap();
+        let sum_num = <NumBigInt as num_traits::Num>::from_str_radix(&sum_hex, 16).unwrap();
         sum_num.to_bytes_le().1
     }
 }

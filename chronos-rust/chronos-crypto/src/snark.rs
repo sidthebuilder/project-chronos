@@ -1,7 +1,7 @@
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
-use rand_core::OsRng;
+use rand::rngs::OsRng;
 use sha2::{Digest, Sha512};
 
 /// Schnorr Non-Interactive Zero-Knowledge (NIZK) Proof of Erasure.
