@@ -6,7 +6,7 @@ httpx>=0.28,<0.29
 
 # Pydantic v2 is required - v1 is not compatible with the Settings classes.
 pydantic>=2.12,<3.0
-pydantic-settings>=2.13,<3.0
+pydantic-settings>=2.14.2,<3.0
 
 # cryptography is used for RSA prime generation and HKDF-SHA256 key derivation.
 # Pinned at major version - they sometimes break APIs between major releases.
