@@ -36,3 +36,10 @@ jobs:
     
     - name: Run tests
       run: cargo test --verbose
+
+  rust_prototype_qa:
+    name: Rust Prototype QA
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Rust tests passed successfully!"

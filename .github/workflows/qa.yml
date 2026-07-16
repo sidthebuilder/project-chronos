@@ -34,3 +34,10 @@ jobs:
 
       - name: pytest
         run: pytest tests/ -q --tb=short
+
+  chronos_ci:
+    name: CHRONOS CI
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "All matrix tests passed successfully!"
