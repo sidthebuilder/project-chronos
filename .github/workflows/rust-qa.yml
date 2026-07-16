@@ -13,7 +13,7 @@ jobs:
       run:
         working-directory: ./chronos-rust
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Build
       run: cargo build --verbose
     - name: Run tests
