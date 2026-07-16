@@ -24,7 +24,12 @@ pub trait FheEngine {
     fn keygen(&self) -> FheKeyPair;
     fn encrypt(&self, key: &FheKeyPair, m: u32) -> FheUint32;
     fn decrypt(&self, key: &FheKeyPair, c: &FheUint32) -> u32;
-    fn homomorphic_dot_product(&self, key: &FheKeyPair, encrypted_features: &[FheUint32], plaintext_weights: &[u32]) -> FheUint32;
+    fn homomorphic_dot_product(
+        &self,
+        key: &FheKeyPair,
+        encrypted_features: &[FheUint32],
+        plaintext_weights: &[u32],
+    ) -> FheUint32;
 }
 
 pub struct ProductionFhe;
@@ -34,10 +39,10 @@ impl FheEngine for ProductionFhe {
         // TFHE-rs configuration (default securely chosen parameters)
         let config = ConfigBuilder::default().build();
         let (client_key, server_key) = generate_keys(config);
-        
+
         let mut secret_seed = [0u8; 32];
         thread_rng().fill_bytes(&mut secret_seed);
-        
+
         FheKeyPair {
             client_key,
             server_key,
@@ -64,15 +69,15 @@ impl FheEngine for ProductionFhe {
         set_server_key(key.server_key.clone());
 
         assert_eq!(encrypted_features.len(), plaintext_weights.len());
-        
+
         let mut sum = self.encrypt(key, 0);
-        
+
         for (feature, &weight) in encrypted_features.iter().zip(plaintext_weights.iter()) {
             // TFHE-rs supports scalar multiplication (FheUint * u32)
             let product = feature * weight;
             sum = sum + product;
         }
-        
+
         sum
     }
 }

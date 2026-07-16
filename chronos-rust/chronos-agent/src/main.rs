@@ -37,7 +37,9 @@ async fn main() -> anyhow::Result<()> {
     println!("      Beacon round: {}", beacon.round);
 
     // Step 2: Key generation and secure memory.
-    println!("[2/5] Generating TFHE-rs Production FHE keypair, pinning secret key to secure memory...");
+    println!(
+        "[2/5] Generating TFHE-rs Production FHE keypair, pinning secret key to secure memory..."
+    );
     let fhe = ProductionFhe;
     let keypair = fhe.keygen();
     let sk_bytes = keypair.secret_bytes();
@@ -49,12 +51,16 @@ async fn main() -> anyhow::Result<()> {
     let csv_url = "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv";
     let dataset_text = reqwest::get(csv_url).await?.text().await?;
     let mut reader = csv::Reader::from_reader(dataset_text.as_bytes());
-    
+
     // We will parse the first record to evaluate homomorphically
     let first_record: IrisRecord = reader.deserialize().next().unwrap()?;
-    println!("      Loaded features: {} {} {} {}", 
-             first_record.sepal_length, first_record.sepal_width, 
-             first_record.petal_length, first_record.petal_width);
+    println!(
+        "      Loaded features: {} {} {} {}",
+        first_record.sepal_length,
+        first_record.sepal_width,
+        first_record.petal_length,
+        first_record.petal_width
+    );
 
     // Convert floats to u32 fixed-point (x10) for TFHE integer compatibility
     let features = vec![
@@ -70,15 +76,22 @@ async fn main() -> anyhow::Result<()> {
     // Step 4: Encrypt and Evaluate
     println!("      Encrypting features and evaluating TFHE-rs Dot Product...");
     let encrypted_features: Vec<_> = features.iter().map(|&f| fhe.encrypt(&keypair, f)).collect();
-    
+
     // Execute inference under FHE (Plaintext Blindness)
     let encrypted_prediction = fhe.homomorphic_dot_product(&keypair, &encrypted_features, &weights);
-    
+
     let prediction = fhe.decrypt(&keypair, &encrypted_prediction);
-    
+
     // Compute plaintext equivalent to verify
-    let expected_prediction = features.iter().zip(weights.iter()).map(|(f, w)| f * w).sum::<u32>();
-    println!("      Decrypted FHE Prediction: {} (Expected: {})", prediction, expected_prediction);
+    let expected_prediction = features
+        .iter()
+        .zip(weights.iter())
+        .map(|(f, w)| f * w)
+        .sum::<u32>();
+    println!(
+        "      Decrypted FHE Prediction: {} (Expected: {})",
+        prediction, expected_prediction
+    );
 
     if prediction != expected_prediction {
         eprintln!("FATAL: TFHE FHE integrity check failed. Triggering erasure.");
@@ -120,7 +133,10 @@ async fn main() -> anyhow::Result<()> {
 
     // Await VDF expiry and commit to key erasure.
     let proof = vdf_handle.await?;
-    println!("      VDF Proof generated: pi length = {} bytes", proof.pi.len());
+    println!(
+        "      VDF Proof generated: pi length = {} bytes",
+        proof.pi.len()
+    );
 
     println!("      Generating Schnorr NIZK Pre-Erasure Commitment...");
     let prover = SchnorrNizk;
