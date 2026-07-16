@@ -10,7 +10,7 @@ pydantic-settings>=2.13,<3.0
 
 # cryptography is used for RSA prime generation and HKDF-SHA256 key derivation.
 # Pinned at major version - they sometimes break APIs between major releases.
-cryptography>=46.0,<47.0
+cryptography>=49.0.0,<50.0
 
 # py_ecc is used for BLS12-381 signature verification against the drand beacon.
 # The Ethereum Foundation maintains this; pinned tightly since the curve math
