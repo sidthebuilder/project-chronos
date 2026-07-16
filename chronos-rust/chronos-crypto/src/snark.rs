@@ -1,7 +1,7 @@
 use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
-use rand_core::OsRng;
+use rand::rngs::OsRng;
 use sha2::{Digest, Sha512};
 
 /// Schnorr Non-Interactive Zero-Knowledge (NIZK) Proof of Erasure.
@@ -16,7 +16,7 @@ use sha2::{Digest, Sha512};
 /// 4. Computes challenge `e = Hash(R || PK || "CHRONOS_ERASE")`.
 /// 5. Computes response `s = r + e * sk`.
 /// 6. Erases `sk` from memory.
-/// 
+///
 /// Verifier checks: `s * G == R + e * PK`.
 
 #[derive(Debug, Clone)]
@@ -50,7 +50,7 @@ impl NizkProver for SchnorrNizk {
         let mut sk_hasher = Sha512::new();
         sk_hasher.update(secret_key_bytes);
         let sk = Scalar::from_bytes_mod_order_wide(&sk_hasher.finalize().into());
-        
+
         let pk = sk * RISTRETTO_BASEPOINT_POINT;
 
         // Generate random r
@@ -69,10 +69,10 @@ impl NizkProver for SchnorrNizk {
 
     fn verify(&self, proof: &SchnorrProof) -> bool {
         let e = Self::hash_challenge(&proof.r_point, &proof.pk);
-        
+
         let lhs = proof.s * RISTRETTO_BASEPOINT_POINT;
         let rhs = proof.r_point + (e * proof.pk);
-        
+
         lhs == rhs
     }
 }

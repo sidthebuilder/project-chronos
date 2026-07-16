@@ -1,4 +1,4 @@
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 
 pub struct AntiTamper {
     last_tick: Instant,
