@@ -14,7 +14,14 @@ jobs:
         working-directory: ./chronos-rust
     steps:
     - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --verbose
+    
+    - name: Run strict Clippy checks with Reviewdog
+      uses: giraffate/clippy-action@v1
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        clippy_flags: --manifest-path ./chronos-rust/Cargo.toml --all-targets --all-features -- -D warnings
+        reporter: github-pr-review
+        fail_on_error: true
+    
     - name: Run tests
       run: cargo test --verbose
