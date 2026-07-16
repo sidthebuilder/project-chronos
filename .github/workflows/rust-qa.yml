@@ -30,6 +30,7 @@ jobs:
       uses: rustsec/audit-check@v1.4.1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: ./chronos-rust
     
     - name: Run tests
       run: cargo test --verbose
