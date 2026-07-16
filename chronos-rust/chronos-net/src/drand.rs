@@ -20,9 +20,9 @@ impl DrandClient {
     }
 
     pub async fn fetch_latest(&self) -> Result<DrandBeacon> {
-        // drand default chain: 8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce
+        // drand quicknet chain (unchained, G1 signatures, G2 pubkey)
         let url = format!(
-            "{}/8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce/public/latest",
+            "{}/dbd506d6ef76e5f386f41c651dcb808c5bcbd75471cc4eafa3f4df7ad4e4c493/public/latest",
             self.base_url
         );
         let client = reqwest::Client::new();
