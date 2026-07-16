@@ -32,7 +32,7 @@ async fn main() -> anyhow::Result<()> {
     let keypair = fhe.keygen();
     // secret_bytes() now returns the 32-byte entropy seed for the Schnorr NIZK
     let sk_bytes = keypair.secret_bytes();
-    
+
     // Create the secure memory wrapper BEFORE executing the mission
     let _secure_sk = SecureString::new(sk_bytes.clone());
     println!("      Keypair pinned in SecureString. Additive Homomorphism ready.");
@@ -69,19 +69,22 @@ async fn main() -> anyhow::Result<()> {
 
     // Execute mission under FHE using beacon randomness as inputs.
     let beacon_bytes = beacon.randomness.as_bytes();
-    let m1 = (beacon_bytes[0] as u64 % 50) + 2; 
+    let m1 = (beacon_bytes[0] as u64 % 50) + 2;
     let m2 = (beacon_bytes[1] as u64 % 50) + 2;
     let c1 = fhe.encrypt(&keypair, m1);
     let c2 = fhe.encrypt(&keypair, m2);
-    
+
     // Homomorphic ADDITION (Paillier), not multiplication
     let c_sum = fhe.homomorphic_add(&keypair, &c1, &c2);
     let decrypted_sum = fhe.decrypt(&keypair, &c_sum);
     println!(
         "      E({}) + E({}) -> decrypt -> {} (expected {})",
-        m1, m2, decrypted_sum, m1 + m2
+        m1,
+        m2,
+        decrypted_sum,
+        m1 + m2
     );
-    
+
     if decrypted_sum != m1 + m2 {
         eprintln!("FATAL: Paillier FHE integrity check failed. Triggering erasure.");
         return Ok(());
@@ -97,7 +100,10 @@ async fn main() -> anyhow::Result<()> {
     // Step 5: Await VDF expiry and commit to key erasure.
     println!("[5/5] Awaiting Wesolowski VDF time-lock...");
     let proof = vdf_handle.await?;
-    println!("      VDF Proof generated: pi length = {} bytes", proof.pi.len());
+    println!(
+        "      VDF Proof generated: pi length = {} bytes",
+        proof.pi.len()
+    );
 
     // Schnorr NIZK over the key before erasure.
     println!("      Generating Schnorr NIZK proof of secret key possession...");
@@ -106,7 +112,7 @@ async fn main() -> anyhow::Result<()> {
     let secure_bytes = _secure_sk.as_bytes();
     let len = std::cmp::min(secure_bytes.len(), 32);
     sk_array[..len].copy_from_slice(&secure_bytes[..len]);
-    
+
     let nizk_proof = prover.prove(&sk_array);
     let verified = prover.verify(&nizk_proof);
     println!("      Schnorr NIZK verified: {}", verified);

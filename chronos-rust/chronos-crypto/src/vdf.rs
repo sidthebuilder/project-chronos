@@ -41,7 +41,7 @@ impl WesolowskiVdf {
 impl VdfEngine for WesolowskiVdf {
     fn evaluate(&self, seed: &[u8], iterations: u64) -> VdfProof {
         let g = BigUint::from_bytes_le(seed) % &self.n;
-        
+
         // 1. Evaluate y = g^(2^T) mod N (Sequential squarings)
         let mut y = g.clone();
         for _ in 0..iterations {
@@ -52,7 +52,10 @@ impl VdfEngine for WesolowskiVdf {
         let l = Self::hash_challenge(&g, &y, iterations);
         if l.is_zero() {
             // Highly improbable, but handle gracefully
-            return VdfProof { y: y.to_bytes_le(), pi: vec![] };
+            return VdfProof {
+                y: y.to_bytes_le(),
+                pi: vec![],
+            };
         }
 
         // 3. Prove pi = g^(floor(2^T / l)) mod N
@@ -63,7 +66,7 @@ impl VdfEngine for WesolowskiVdf {
             let r2 = r * 2u32;
             let b = &r2 / &l;
             r = r2 % &l;
-            
+
             // pi = (pi^2) * (g^b) mod N
             let pi_sq = pi.modpow(&BigUint::from(2u32), &self.n);
             let gb = g.modpow(&b, &self.n);
@@ -82,7 +85,9 @@ impl VdfEngine for WesolowskiVdf {
         let pi = BigUint::from_bytes_le(&proof.pi);
 
         let l = Self::hash_challenge(&g, &y, iterations);
-        if l.is_zero() { return false; }
+        if l.is_zero() {
+            return false;
+        }
 
         // r = 2^T mod l
         // We can compute this quickly using modpow

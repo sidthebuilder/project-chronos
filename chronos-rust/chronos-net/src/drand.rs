@@ -1,5 +1,5 @@
-use serde::Deserialize;
 use anyhow::Result;
+use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 pub struct DrandBeacon {
@@ -26,12 +26,15 @@ impl DrandClient {
             self.base_url
         );
         let client = reqwest::Client::new();
-        let res = client.get(&url)
+        let res = client
+            .get(&url)
             .header("User-Agent", "project-chronos-rust/0.1.0")
-            .send().await?
-            .json::<DrandBeacon>().await?;
-        
-        // In prototype, we skip BLS12-381 signature verification 
+            .send()
+            .await?
+            .json::<DrandBeacon>()
+            .await?;
+
+        // In prototype, we skip BLS12-381 signature verification
         // to reduce compilation overhead.
         println!("[DRAND] Fetched beacon round {}", res.round);
         Ok(res)
