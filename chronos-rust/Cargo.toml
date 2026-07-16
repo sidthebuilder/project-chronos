@@ -10,7 +10,7 @@ resolver = "2"
 [workspace.dependencies]
 tokio = { version = "1", features = ["full"] }
 anyhow = "1.0"
-sha2 = "0.10"
+sha2 = "0.11"
 hex = "0.4"
 kzen-paillier = "0.4.3"
 num-bigint = "0.4"
