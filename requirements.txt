@@ -30,7 +30,7 @@ pytest-mock>=3.15,<4.0
 # Formatter, linter, type checker, security scanner.
 # Pinned loosely so minor updates come through automatically in CI,
 # but major version bumps (which often have breaking config changes) don't.
-black>=26.0,<27.0
+black>=26.5.1,<27.0
 flake8>=7.3,<8.0
 isort>=8.0,<9.0
 mypy>=1.19,<2.0
