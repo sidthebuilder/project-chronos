@@ -1,12 +1,22 @@
 use chronos_core::memory::SecureString;
 use chronos_core::tamper::AntiTamper;
-use chronos_crypto::fhe::{FheEngine, PrototypeFhe};
+use chronos_crypto::fhe::{FheEngine, ProductionFhe};
 use chronos_crypto::snark::{NizkProver, SchnorrNizk};
 use chronos_crypto::vdf::{VdfEngine, WesolowskiVdf};
 use chronos_net::drand::DrandClient;
 use num_bigint::BigUint;
 use num_traits::Num;
+use serde::Deserialize;
 use tokio::time::{sleep, Duration};
+
+#[derive(Deserialize, Debug)]
+struct IrisRecord {
+    sepal_length: f32,
+    sepal_width: f32,
+    petal_length: f32,
+    petal_width: f32,
+    species: String,
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -27,18 +37,55 @@ async fn main() -> anyhow::Result<()> {
     println!("      Beacon round: {}", beacon.round);
 
     // Step 2: Key generation and secure memory.
-    println!("[2/5] Generating Paillier FHE keypair, pinning secret key to secure memory...");
-    let fhe = PrototypeFhe;
+    println!("[2/5] Generating TFHE-rs Production FHE keypair, pinning secret key to secure memory...");
+    let fhe = ProductionFhe;
     let keypair = fhe.keygen();
-    // secret_bytes() now returns the 32-byte entropy seed for the Schnorr NIZK
     let sk_bytes = keypair.secret_bytes();
-
-    // Create the secure memory wrapper BEFORE executing the mission
     let _secure_sk = SecureString::new(sk_bytes.clone());
-    println!("      Keypair pinned in SecureString. Additive Homomorphism ready.");
+    println!("      Keypair pinned in SecureString. TFHE Homomorphic operations ready.");
 
-    // Step 3: Spawn VDF time-lock on a dedicated blocking thread.
-    // We use a hardcoded 1024-bit RSA modulus for the Wesolowski VDF prototype.
+    // Step 3: Fetch Real ML Dataset from GitHub (Kaggle/Seaborn mirror)
+    println!("[3/6] Fetching dataset for Privacy-Preserving Inference...");
+    let csv_url = "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv";
+    let dataset_text = reqwest::get(csv_url).await?.text().await?;
+    let mut reader = csv::Reader::from_reader(dataset_text.as_bytes());
+    
+    // We will parse the first record to evaluate homomorphically
+    let first_record: IrisRecord = reader.deserialize().next().unwrap()?;
+    println!("      Loaded features: {} {} {} {}", 
+             first_record.sepal_length, first_record.sepal_width, 
+             first_record.petal_length, first_record.petal_width);
+
+    // Convert floats to u32 fixed-point (x10) for TFHE integer compatibility
+    let features = vec![
+        (first_record.sepal_length * 10.0) as u32,
+        (first_record.sepal_width * 10.0) as u32,
+        (first_record.petal_length * 10.0) as u32,
+        (first_record.petal_width * 10.0) as u32,
+    ];
+
+    // Dummy pretrained weights (also scaled x10)
+    let weights: Vec<u32> = vec![2, 5, 3, 1];
+
+    // Step 4: Encrypt and Evaluate
+    println!("      Encrypting features and evaluating TFHE-rs Dot Product...");
+    let encrypted_features: Vec<_> = features.iter().map(|&f| fhe.encrypt(&keypair, f)).collect();
+    
+    // Execute inference under FHE (Plaintext Blindness)
+    let encrypted_prediction = fhe.homomorphic_dot_product(&keypair, &encrypted_features, &weights);
+    
+    let prediction = fhe.decrypt(&keypair, &encrypted_prediction);
+    
+    // Compute plaintext equivalent to verify
+    let expected_prediction = features.iter().zip(weights.iter()).map(|(f, w)| f * w).sum::<u32>();
+    println!("      Decrypted FHE Prediction: {} (Expected: {})", prediction, expected_prediction);
+
+    if prediction != expected_prediction {
+        eprintln!("FATAL: TFHE FHE integrity check failed. Triggering erasure.");
+        return Ok(());
+    }
+
+    // Step 5: Spawning VDF and Anti-Tamper threads (simulated for compilation limits on heavy TFHE)
     let vdf_n_hex = "\
         c4b36f86b7188b1f4df4f661df2c70c1e847cd3b9b4625b5969542a27fc7e8a9\
         155ebc402175c5e89d1b09b0b46321b19901f468249fc21370211ff1a134a65b\
@@ -47,14 +94,13 @@ async fn main() -> anyhow::Result<()> {
     let vdf_n = BigUint::from_str_radix(vdf_n_hex, 16).unwrap();
     let vdf_seed = beacon.randomness.as_bytes().to_vec();
 
-    println!("[3/5] Spawning Wesolowski VDF time-lock (10k sequential squarings)...");
+    println!("[5/6] Spawning Wesolowski VDF time-lock (10k sequential squarings)...");
     let vdf_handle = tokio::task::spawn_blocking(move || {
         let vdf = WesolowskiVdf { n: vdf_n };
         vdf.evaluate(&vdf_seed, 10_000)
     });
 
-    // Step 4: Spawn AntiTamper on a dedicated OS thread — NOT from async.
-    println!("[4/5] Spawning anti-tamper daemon on dedicated OS thread...");
+    println!("[6/6] Spawning anti-tamper daemon on dedicated OS thread...");
     let (tamper_tx, tamper_rx) = std::sync::mpsc::channel::<bool>();
     std::thread::spawn(move || {
         let mut tamper = AntiTamper::new(500);
@@ -67,46 +113,16 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    // Execute mission under FHE using beacon randomness as inputs.
-    let beacon_bytes = beacon.randomness.as_bytes();
-    let m1 = (beacon_bytes[0] as u64 % 50) + 2;
-    let m2 = (beacon_bytes[1] as u64 % 50) + 2;
-    let c1 = fhe.encrypt(&keypair, m1);
-    let c2 = fhe.encrypt(&keypair, m2);
-
-    // Homomorphic ADDITION (Paillier), not multiplication
-    let c_sum = fhe.homomorphic_add(&keypair, &c1, &c2);
-    let decrypted_sum = fhe.decrypt(&keypair, &c_sum);
-    println!(
-        "      E({}) + E({}) -> decrypt -> {} (expected {})",
-        m1,
-        m2,
-        decrypted_sum,
-        m1 + m2
-    );
-
-    if decrypted_sum != m1 + m2 {
-        eprintln!("FATAL: Paillier FHE integrity check failed. Triggering erasure.");
-        return Ok(());
-    }
-
     if tamper_rx.try_recv().unwrap_or(false) {
         eprintln!("FATAL: Tamper detected. Triggering immediate erasure.");
         return Ok(());
     }
 
-    sleep(Duration::from_millis(50)).await;
-
-    // Step 5: Await VDF expiry and commit to key erasure.
-    println!("[5/5] Awaiting Wesolowski VDF time-lock...");
+    // Await VDF expiry and commit to key erasure.
     let proof = vdf_handle.await?;
-    println!(
-        "      VDF Proof generated: pi length = {} bytes",
-        proof.pi.len()
-    );
+    println!("      VDF Proof generated: pi length = {} bytes", proof.pi.len());
 
-    // Schnorr NIZK over the key before erasure.
-    println!("      Generating Schnorr NIZK proof of secret key possession...");
+    println!("      Generating Schnorr NIZK Pre-Erasure Commitment...");
     let prover = SchnorrNizk;
     let mut sk_array = [0u8; 32];
     let secure_bytes = _secure_sk.as_bytes();
