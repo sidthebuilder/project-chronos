@@ -2,7 +2,7 @@
 # httpx is used by the drand client for async HTTP requests.
 # Keeping it unpinned at the minor level because the API surface we use
 # (AsyncClient, get, raise_for_status) has been stable across 0.2x.
-httpx>=0.28,<0.29
+httpx>=0.28.1,<0.29
 
 # Pydantic v2 is required - v1 is not compatible with the Settings classes.
 pydantic>=2.12,<3.0
