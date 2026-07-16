@@ -1,4 +1,4 @@
-use kzen_paillier::{DecryptionKey, EncryptionKey, Paillier, core::Add, core::Decrypt};
+use kzen_paillier::{DecryptionKey, EncryptionKey, Paillier, Add, Decrypt, Encrypt, KeyGeneration};
 use rand::{RngCore, thread_rng};
 
 /// Production Paillier FHE implementation.
