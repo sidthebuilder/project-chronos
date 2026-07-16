@@ -38,7 +38,8 @@ impl FheEngine for PrototypeFhe {
 
     fn encrypt(&self, key: &FheKeyPair, m: u64) -> Vec<u8> {
         use curv::arithmetic::Converter;
-        use num_bigint::{BigInt as NumBigInt, Num};
+        use num_bigint::BigInt as NumBigInt;
+        use num_traits::Num;
         use kzen_paillier::{BigInt as KzenBigInt, RawPlaintext, RawCiphertext};
         
         let m_str = m.to_string();
@@ -55,7 +56,8 @@ impl FheEngine for PrototypeFhe {
 
     fn decrypt(&self, key: &FheKeyPair, c: &[u8]) -> u64 {
         use curv::arithmetic::Converter;
-        use num_bigint::{BigInt as NumBigInt, Num};
+        use num_bigint::BigInt as NumBigInt;
+        use num_traits::Num;
         use kzen_paillier::{BigInt as KzenBigInt, RawPlaintext, RawCiphertext};
         
         let ct_num = NumBigInt::from_bytes_le(num_bigint::Sign::Plus, c);
@@ -75,7 +77,8 @@ impl FheEngine for PrototypeFhe {
 
     fn homomorphic_add(&self, key: &FheKeyPair, c1: &[u8], c2: &[u8]) -> Vec<u8> {
         use curv::arithmetic::Converter;
-        use num_bigint::{BigInt as NumBigInt, Num};
+        use num_bigint::BigInt as NumBigInt;
+        use num_traits::Num;
         use kzen_paillier::{BigInt as KzenBigInt, RawCiphertext};
         
         let c1_num = NumBigInt::from_bytes_le(num_bigint::Sign::Plus, c1);
