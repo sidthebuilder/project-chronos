@@ -26,11 +26,13 @@ jobs:
         reporter: github-pr-review
         fail_on_error: true
     
-    - name: Run Cargo Audit (Security Vulnerability Check)
-      uses: rustsec/audit-check@v1.4.1
+    - name: Install cargo-audit
+      uses: taiki-e/install-action@v2
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        working-directory: ./chronos-rust
+        tool: cargo-audit
+        
+    - name: Run Cargo Audit (Security Vulnerability Check)
+      run: cargo audit
     
     - name: Run tests
       run: cargo test --verbose
