@@ -39,7 +39,7 @@ impl SchnorrNizk {
         hasher.update(r_point.compress().as_bytes());
         hasher.update(pk.compress().as_bytes());
         hasher.update(b"CHRONOS_ERASE");
-        Scalar::from_hash(hasher)
+        Scalar::from_bytes_mod_order_wide(&hasher.finalize().into())
     }
 }
 
@@ -49,7 +49,7 @@ impl NizkProver for SchnorrNizk {
         // To be safe and deterministic across bytes, we hash it to a scalar.
         let mut sk_hasher = Sha512::new();
         sk_hasher.update(secret_key_bytes);
-        let sk = Scalar::from_hash(sk_hasher);
+        let sk = Scalar::from_bytes_mod_order_wide(&sk_hasher.finalize().into());
         
         let pk = sk * RISTRETTO_BASEPOINT_POINT;
 

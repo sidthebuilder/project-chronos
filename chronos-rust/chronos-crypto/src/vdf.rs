@@ -1,5 +1,5 @@
 use num_bigint::{BigUint, RandBigInt};
-use num_traits::{One, Zero, ToBytes};
+use num_traits::{One, Zero};
 use sha2::{Digest, Sha256};
 
 /// Wesolowski Verifiable Delay Function (VDF) implementation.
