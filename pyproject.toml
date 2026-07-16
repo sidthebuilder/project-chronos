@@ -40,7 +40,7 @@ dev = [
     "flake8>=6.0",
     "isort>=5.0",
     "mypy>=1.0",
-    "bandit>=1.7",
+    "bandit>=1.9.4",
 ]
 fast = [
     # gmpy2 provides 10-100x speedup for Paillier modular exponentiation.
