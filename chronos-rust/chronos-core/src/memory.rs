@@ -1,24 +1,28 @@
 pub struct SecureString {
-    data: Vec<u8>,
+    inner: Vec<u8>,
 }
 
 impl SecureString {
     pub fn new(data: Vec<u8>) -> Self {
-        // Production: call libc::mlock() here to pin memory pages to RAM.
-        // This prevents the OS from swapping the key to disk.
-        Self { data }
+        #[cfg(target_family = "unix")]
+        unsafe {
+            // Attempt to pin the memory to RAM so it's never paged out to disk swap
+            libc::mlock(data.as_ptr() as *const libc::c_void, data.len());
+        }
+
+        Self { inner: data }
     }
 
     pub fn as_bytes(&self) -> &[u8] {
-        &self.data
+        &self.inner
     }
 
     pub fn len(&self) -> usize {
-        self.data.len()
+        self.inner.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.data.is_empty()
+        self.inner.is_empty()
     }
 }
 
@@ -29,15 +33,25 @@ impl Drop for SecureString {
         // Elimination (DSE) optimization will remove these writes entirely
         // at compile time, leaving the key intact in memory.
         unsafe {
-            for byte in self.data.iter_mut() {
-                std::ptr::write_volatile(byte, 0x00);
+            for byte in self.inner.iter_mut() {
+                core::ptr::write_volatile(byte, 0);
             }
-            for byte in self.data.iter_mut() {
-                std::ptr::write_volatile(byte, 0xFF);
+
+            // Additional passes for paranoia (simulating DoD 5220.22-M triple pass)
+            for byte in self.inner.iter_mut() {
+                core::ptr::write_volatile(byte, 0xFF);
             }
-            for byte in self.data.iter_mut() {
-                std::ptr::write_volatile(byte, 0x00);
+            for byte in self.inner.iter_mut() {
+                core::ptr::write_volatile(byte, 0);
             }
+
+            #[cfg(target_family = "unix")]
+            {
+                // Unlock the memory so the OS can reclaim it
+                libc::munlock(self.inner.as_ptr() as *const libc::c_void, self.inner.len());
+            }
+
+            core::sync::atomic::compiler_fence(core::sync::atomic::Ordering::SeqCst);
         }
     }
 }
