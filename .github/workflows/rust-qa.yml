@@ -32,12 +32,11 @@ jobs:
     - name: Run Cargo Audit (Security Vulnerability Check)
       run: cargo audit --ignore RUSTSEC-2025-0055 --ignore RUSTSEC-2025-0055
     
+    - name: Install cargo-tarpaulin
+      uses: taiki-e/install-action@cargo-tarpaulin
+
     - name: Run tests with coverage
-      uses: actions-rs/tarpaulin@v0.1
-      with:
-        version: '0.22.0'
-        args: '--all-features --workspace --timeout 120 --out Xml'
-        working-directory: ./chronos-rust
+      run: cargo tarpaulin --all-features --workspace --timeout 120 --out xml
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
