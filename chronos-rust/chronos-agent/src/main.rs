@@ -9,7 +9,6 @@ use num_traits::Num;
 use serde::Deserialize;
 use std::time::Instant;
 
-
 #[derive(Deserialize, Debug)]
 struct RealEstateRecord {
     housing_median_age: f32,
