@@ -32,8 +32,19 @@ jobs:
     - name: Run Cargo Audit (Security Vulnerability Check)
       run: cargo audit --ignore RUSTSEC-2025-0055 --ignore RUSTSEC-2025-0055
     
-    - name: Run tests
-      run: cargo test --verbose
+    - name: Run tests with coverage
+      uses: actions-rs/tarpaulin@v0.1
+      with:
+        version: '0.22.0'
+        args: '--all-features --workspace --timeout 120 --out Xml'
+        working-directory: ./chronos-rust
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: true
+        files: ./chronos-rust/cobertura.xml
 
     - name: Check WASM Dashboard
       run: |
