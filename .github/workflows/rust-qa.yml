@@ -32,6 +32,9 @@ jobs:
     - name: Run Cargo Audit (Security Vulnerability Check)
       run: cargo audit --ignore RUSTSEC-2025-0055 --ignore RUSTSEC-2025-0055
     
+    - name: Install dependencies (CUDA)
+      run: sudo apt-get update && sudo apt-get install -y nvidia-cuda-toolkit
+
     - name: Install cargo-tarpaulin
       uses: taiki-e/install-action@cargo-tarpaulin
 
