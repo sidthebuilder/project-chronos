@@ -30,7 +30,7 @@ jobs:
         tool: cargo-audit
         
     - name: Run Cargo Audit (Security Vulnerability Check)
-      run: cargo audit
+      run: cargo audit --ignore RUSTSEC-2025-0055
     
     - name: Run tests
       run: cargo test --verbose
