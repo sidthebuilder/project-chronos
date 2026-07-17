@@ -116,6 +116,7 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "reqwest",
+ "serde",
  "sha2",
  "tokio",
 ]
