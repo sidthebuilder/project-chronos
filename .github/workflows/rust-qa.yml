@@ -30,9 +30,7 @@ jobs:
         tool: cargo-audit
         
     - name: Run Cargo Audit (Security Vulnerability Check)
-      # Cargo audit is currently finding unpatchable vulnerabilities in the legacy curv-kzen dependency chain.
-      # For the prototype phase, we will log the output but not fail the build to unblock PRs.
-      run: cargo audit || echo "Cargo audit found vulnerabilities in legacy dependencies. Ignoring failure for prototype phase."
+      run: cargo audit
     
     - name: Run tests
       run: cargo test --verbose
