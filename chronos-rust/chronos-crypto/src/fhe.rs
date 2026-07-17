@@ -21,21 +21,39 @@ impl FheKeyPair {
 }
 
 pub trait FheEngine {
-    fn keygen(&self) -> FheKeyPair;
-    fn encrypt(&self, key: &FheKeyPair, m: u32) -> FheUint32;
-    fn decrypt(&self, key: &FheKeyPair, c: &FheUint32) -> u32;
+    type Keypair;
+    type Ciphertext;
+
+    fn generate_keys(&self) -> Self::Keypair;
+    fn encrypt(&self, keypair: &Self::Keypair, data: u32) -> Self::Ciphertext;
+    fn decrypt(&self, keypair: &Self::Keypair, ciphertext: &Self::Ciphertext) -> u32;
+
+    /// Evaluates a simple homomorphic dot product (Linear Regression).
     fn homomorphic_dot_product(
         &self,
-        key: &FheKeyPair,
-        encrypted_features: &[FheUint32],
-        plaintext_weights: &[u32],
-    ) -> FheUint32;
+        keypair: &Self::Keypair,
+        features: &[Self::Ciphertext],
+        weights: &[u32],
+    ) -> Self::Ciphertext;
+
+    /// Evaluates a homomorphic Matrix-Vector Multiplication (Neural Network Hidden Layer).
+    /// `weights_matrix` is an M x N matrix, where M is the number of output neurons
+    /// and N is the number of input features.
+    fn homomorphic_matrix_vector_mul(
+        &self,
+        keypair: &Self::Keypair,
+        features: &[Self::Ciphertext],
+        weights_matrix: &[Vec<u32>],
+    ) -> Vec<Self::Ciphertext>;
 }
 
 pub struct ProductionFhe;
 
 impl FheEngine for ProductionFhe {
-    fn keygen(&self) -> FheKeyPair {
+    type Keypair = FheKeyPair;
+    type Ciphertext = FheUint32;
+
+    fn generate_keys(&self) -> Self::Keypair {
         // TFHE-rs configuration (default securely chosen parameters)
         let config = ConfigBuilder::default().build();
         let (client_key, server_key) = generate_keys(config);
@@ -50,34 +68,54 @@ impl FheEngine for ProductionFhe {
         }
     }
 
-    fn encrypt(&self, key: &FheKeyPair, m: u32) -> FheUint32 {
-        FheUint32::encrypt(m, &key.client_key)
+    fn encrypt(&self, keypair: &Self::Keypair, m: u32) -> FheUint32 {
+        FheUint32::encrypt(m, &keypair.client_key)
     }
 
-    fn decrypt(&self, key: &FheKeyPair, c: &FheUint32) -> u32 {
-        c.decrypt(&key.client_key)
+    fn decrypt(&self, keypair: &Self::Keypair, c: &FheUint32) -> u32 {
+        c.decrypt(&keypair.client_key)
     }
 
     /// Evaluates a machine learning linear model (dot product) completely under FHE
     fn homomorphic_dot_product(
         &self,
-        key: &FheKeyPair,
-        encrypted_features: &[FheUint32],
-        plaintext_weights: &[u32],
-    ) -> FheUint32 {
+        keypair: &Self::Keypair,
+        features: &[Self::Ciphertext],
+        weights: &[u32],
+    ) -> Self::Ciphertext {
         // Must set the server key for the current thread to perform homomorphic ops
-        set_server_key(key.server_key.clone());
+        set_server_key(keypair.server_key.clone());
+        let mut result = None;
 
-        assert_eq!(encrypted_features.len(), plaintext_weights.len());
+        for (feature, &weight) in features.iter().zip(weights.iter()) {
+            // Scalar multiplication: ciphertext * plaintext_u32
+            let weighted_feature = feature * weight;
 
-        let mut sum = self.encrypt(key, 0);
-
-        for (feature, &weight) in encrypted_features.iter().zip(plaintext_weights.iter()) {
-            // TFHE-rs supports scalar multiplication (FheUint * u32)
-            let product = feature * weight;
-            sum = sum + product;
+            match result {
+                None => result = Some(weighted_feature),
+                Some(ref mut acc) => {
+                    *acc = acc.clone() + weighted_feature;
+                }
+            }
         }
 
-        sum
+        result.expect("Features array cannot be empty")
+    }
+
+    fn homomorphic_matrix_vector_mul(
+        &self,
+        keypair: &Self::Keypair,
+        features: &[Self::Ciphertext],
+        weights_matrix: &[Vec<u32>],
+    ) -> Vec<Self::Ciphertext> {
+        let mut output_neurons = Vec::with_capacity(weights_matrix.len());
+
+        for neuron_weights in weights_matrix {
+            // Each neuron output is the dot product of its weights and the input features
+            let dot_product = self.homomorphic_dot_product(keypair, features, neuron_weights);
+            output_neurons.push(dot_product);
+        }
+
+        output_neurons
     }
 }
