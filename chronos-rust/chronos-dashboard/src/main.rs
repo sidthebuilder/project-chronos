@@ -1,19 +1,19 @@
 #![allow(non_snake_case)]
 
 use dioxus::prelude::*;
-use log::LevelFilter;
+use log::Level;
 
 fn main() {
     // Init logger for web console
-    wasm_logger::init(wasm_logger::Config::new(LevelFilter::Info));
+    wasm_logger::init(wasm_logger::Config::new(Level::Info));
     dioxus::launch(App);
 }
 
 #[component]
 fn App() -> Element {
-    let mut network_status = use_signal(|| "Connecting to Drand Beacon...");
-    let mut fhe_status = use_signal(|| "Awaiting FHE Neural Network evaluation...");
-    let mut dataset_loaded = use_signal(|| false);
+    let network_status = use_signal(|| "Connecting to Drand Beacon...");
+    let fhe_status = use_signal(|| "Awaiting FHE Neural Network evaluation...");
+    let dataset_loaded = use_signal(|| false);
 
     // Simulate connection flow
     use_effect(move || {
