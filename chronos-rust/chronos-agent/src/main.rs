@@ -10,12 +10,12 @@ use serde::Deserialize;
 use tokio::time::{sleep, Duration};
 
 #[derive(Deserialize, Debug)]
-struct IrisRecord {
-    sepal_length: f32,
-    sepal_width: f32,
-    petal_length: f32,
-    petal_width: f32,
-    species: String,
+struct CreditRecord {
+    person_age: u32,
+    person_income: u32,
+    loan_amnt: u32,
+    loan_int_rate: f32,
+    loan_status: u32, // 0 = non-default, 1 = default
 }
 
 #[tokio::main]
@@ -46,32 +46,41 @@ async fn main() -> anyhow::Result<()> {
     let _secure_sk = SecureString::new(sk_bytes.clone());
     println!("      Keypair pinned in SecureString. TFHE Homomorphic operations ready.");
 
-    // Step 3: Fetch Real ML Dataset from GitHub (Kaggle/Seaborn mirror)
-    println!("[3/6] Fetching dataset for Privacy-Preserving Inference...");
-    let csv_url = "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv";
-    let dataset_text = reqwest::get(csv_url).await?.text().await?;
+    // Step 3: Parse Financial Credit Risk Dataset (Kaggle dataset simulated via robust inline string to avoid network flakes)
+    println!("[3/6] Loading Kaggle Credit Risk Dataset for Privacy-Preserving Inference...");
+    let dataset_text = "\
+person_age,person_income,loan_amnt,loan_int_rate,loan_status
+22,59000,35000,16.02,1
+21,9600,1000,11.14,0
+25,9600,5500,12.87,1
+";
     let mut reader = csv::Reader::from_reader(dataset_text.as_bytes());
 
     // We will parse the first record to evaluate homomorphically
-    let first_record: IrisRecord = reader.deserialize().next().unwrap()?;
+    let first_record: CreditRecord = reader.deserialize().next().unwrap()?;
     println!(
-        "      Loaded features: {} {} {} {}",
-        first_record.sepal_length,
-        first_record.sepal_width,
-        first_record.petal_length,
-        first_record.petal_width
+        "      Loaded Credit Record: Age: {}, Income: ${}, Loan Amount: ${}, Interest Rate: {}%",
+        first_record.person_age,
+        first_record.person_income,
+        first_record.loan_amnt,
+        first_record.loan_int_rate
     );
 
-    // Convert floats to u32 fixed-point (x10) for TFHE integer compatibility
+    // Normalize features for TFHE integer compatibility (simple scaling for demonstration)
+    // TFHE-rs integer evaluates best on reasonably bounded integers.
     let features = vec![
-        (first_record.sepal_length * 10.0) as u32,
-        (first_record.sepal_width * 10.0) as u32,
-        (first_record.petal_length * 10.0) as u32,
-        (first_record.petal_width * 10.0) as u32,
+        first_record.person_age,
+        first_record.person_income / 1000, // Scale income to thousands
+        first_record.loan_amnt / 1000,     // Scale loan amount to thousands
+        (first_record.loan_int_rate * 10.0) as u32, // Scale interest x10
     ];
 
-    // Dummy pretrained weights (also scaled x10)
-    let weights: Vec<u32> = vec![2, 5, 3, 1];
+    // Dummy pretrained financial risk weights (Linear Regression model for Risk Scoring)
+    // Higher score means higher risk of default.
+    // e.g. Age: -1 (older is safer), Income: -2 (higher is safer), Loan Amount: +5 (higher is riskier), Interest: +3 (higher is riskier)
+    // Since TFHE-rs currently uses unsigned integers here, we use a scaled unsigned arithmetic model:
+    // Risk Score = 0 (base) + 0(Age) + 1(Income/1k) + 5(Loan/1k) + 2(Interest*10)
+    let weights: Vec<u32> = vec![0, 1, 5, 2];
 
     // Step 4: Encrypt and Evaluate
     println!("      Encrypting features and evaluating TFHE-rs Dot Product...");
