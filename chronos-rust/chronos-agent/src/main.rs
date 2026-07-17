@@ -23,16 +23,12 @@ async fn main() -> anyhow::Result<()> {
     // Step 1: Fetch external randomness as the mission seed.
     println!("[1/5] Fetching Drand randomness beacon...");
     let drand = DrandClient::new("https://api.drand.sh");
-    let beacon = drand.fetch_latest().await.unwrap_or_else(|_| {
-        eprintln!("[WARN] Drand unreachable. Using local fallback seed.");
-        chronos_net::drand::DrandBeacon {
-            round: 0,
-            randomness: "deadbeef00000000000000000000000000000000000000000000000000000000"
-                .to_string(),
-            signature: String::new(),
-        }
-    });
-    println!("      Beacon round: {}", beacon.round);
+    let drand_client = DrandClient::new("https://api.drand.sh");
+    let beacon_seed_hex = drand_client.fetch_latest().await?;
+    println!(
+        "      Secured Mission Seed (Drand + CPU Hardware Entropy): {}",
+        beacon_seed_hex
+    );
 
     // Step 2: Key generation and secure memory.
     println!(
@@ -146,7 +142,7 @@ async fn main() -> anyhow::Result<()> {
         308a3d5f992a5d7c30f40a1b8e622b7a421b332b5dc98a2806b0b2b801a6b0c2\
         8fc07914f6b0b533f81e3a6cd2ab5f8992a54fb22b9b5f543cb6824b22b10a29";
     let vdf_n = BigUint::from_str_radix(vdf_n_hex, 16).unwrap();
-    let vdf_seed = beacon.randomness.as_bytes().to_vec();
+    let vdf_seed = hex::decode(&beacon_seed_hex).unwrap_or_else(|_| vec![0; 32]);
 
     println!("[5/6] Spawning Wesolowski VDF time-lock (10k sequential squarings)...");
     let vdf_handle = tokio::task::spawn_blocking(move || {
