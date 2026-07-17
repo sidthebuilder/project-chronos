@@ -7,15 +7,15 @@ use chronos_net::drand::DrandClient;
 use num_bigint::BigUint;
 use num_traits::Num;
 use serde::Deserialize;
+use std::time::Instant;
 use tokio::time::{sleep, Duration};
 
 #[derive(Deserialize, Debug)]
-struct CreditRecord {
-    person_age: u32,
-    person_income: u32,
-    loan_amnt: u32,
-    loan_int_rate: f32,
-    loan_status: u32, // 0 = non-default, 1 = default
+struct RealEstateRecord {
+    housing_median_age: f32,
+    total_rooms: f32,
+    population: f32,
+    median_income: f32,
 }
 
 #[tokio::main]
@@ -46,66 +46,74 @@ async fn main() -> anyhow::Result<()> {
     let _secure_sk = SecureString::new(sk_bytes.clone());
     println!("      Keypair pinned in SecureString. TFHE Homomorphic operations ready.");
 
-    // Step 3: Parse Financial Credit Risk Dataset (Kaggle dataset simulated via robust inline string to avoid network flakes)
-    println!("[3/6] Loading Kaggle Credit Risk Dataset for Privacy-Preserving Inference...");
-    let dataset_text = "\
-person_age,person_income,loan_amnt,loan_int_rate,loan_status
-22,59000,35000,16.02,1
-21,9600,1000,11.14,0
-25,9600,5500,12.87,1
-";
+    // Step 3: Fetch Massive Real Estate Dataset (20,640 rows, 1.4MB)
+    println!("[3/6] Fetching 1.4MB California Housing Dataset (20,640 records) over network...");
+    let dataset_start = Instant::now();
+    let csv_url =
+        "https://raw.githubusercontent.com/ageron/handson-ml/master/datasets/housing/housing.csv";
+    let dataset_text = reqwest::get(csv_url).await?.text().await?;
     let mut reader = csv::Reader::from_reader(dataset_text.as_bytes());
 
-    // We will parse the first record to evaluate homomorphically
-    let first_record: CreditRecord = reader.deserialize().next().unwrap()?;
-    println!(
-        "      Loaded Credit Record: Age: {}, Income: ${}, Loan Amount: ${}, Interest Rate: {}%",
-        first_record.person_age,
-        first_record.person_income,
-        first_record.loan_amnt,
-        first_record.loan_int_rate
-    );
-
-    // Normalize features for TFHE integer compatibility (simple scaling for demonstration)
-    // TFHE-rs integer evaluates best on reasonably bounded integers.
-    let features = vec![
-        first_record.person_age,
-        first_record.person_income / 1000, // Scale income to thousands
-        first_record.loan_amnt / 1000,     // Scale loan amount to thousands
-        (first_record.loan_int_rate * 10.0) as u32, // Scale interest x10
-    ];
-
-    // Dummy pretrained financial risk weights (Linear Regression model for Risk Scoring)
-    // Higher score means higher risk of default.
-    // e.g. Age: -1 (older is safer), Income: -2 (higher is safer), Loan Amount: +5 (higher is riskier), Interest: +3 (higher is riskier)
-    // Since TFHE-rs currently uses unsigned integers here, we use a scaled unsigned arithmetic model:
-    // Risk Score = 0 (base) + 0(Age) + 1(Income/1k) + 5(Loan/1k) + 2(Interest*10)
-    let weights: Vec<u32> = vec![0, 1, 5, 2];
-
-    // Step 4: Encrypt and Evaluate
-    println!("      Encrypting features and evaluating TFHE-rs Dot Product...");
-    let encrypted_features: Vec<_> = features.iter().map(|&f| fhe.encrypt(&keypair, f)).collect();
-
-    // Execute inference under FHE (Plaintext Blindness)
-    let encrypted_prediction = fhe.homomorphic_dot_product(&keypair, &encrypted_features, &weights);
-
-    let prediction = fhe.decrypt(&keypair, &encrypted_prediction);
-
-    // Compute plaintext equivalent to verify
-    let expected_prediction = features
-        .iter()
-        .zip(weights.iter())
-        .map(|(f, w)| f * w)
-        .sum::<u32>();
-    println!(
-        "      Decrypted FHE Prediction: {} (Expected: {})",
-        prediction, expected_prediction
-    );
-
-    if prediction != expected_prediction {
-        eprintln!("FATAL: TFHE FHE integrity check failed. Triggering erasure.");
-        return Ok(());
+    let mut records = Vec::new();
+    for result in reader.deserialize() {
+        if let Ok(record) = result {
+            let r: RealEstateRecord = record;
+            records.push(r);
+        }
     }
+    println!(
+        "      Loaded {} real estate records in {:.2?}",
+        records.len(),
+        dataset_start.elapsed()
+    );
+
+    // Step 4: Encrypt and Evaluate a batch of 5 records
+    println!("[4/6] Encrypting features and evaluating TFHE-rs Dot Product on a batch of 5...");
+
+    // Mortgage Valuation Weights (Income = +10, Rooms = +2, Age = +1, Population = 0)
+    let weights: Vec<u32> = vec![10, 2, 1, 0];
+
+    let fhe_start = Instant::now();
+    for (i, record) in records.iter().take(5).enumerate() {
+        let features = vec![
+            (record.median_income * 10.0) as u32,
+            (record.total_rooms / 100.0) as u32,
+            record.housing_median_age as u32,
+            (record.population / 1000.0) as u32,
+        ];
+
+        let enc_start = Instant::now();
+        let encrypted_features: Vec<_> =
+            features.iter().map(|&f| fhe.encrypt(&keypair, f)).collect();
+        let enc_time = enc_start.elapsed();
+
+        let dot_start = Instant::now();
+        let encrypted_prediction =
+            fhe.homomorphic_dot_product(&keypair, &encrypted_features, &weights);
+        let dot_time = dot_start.elapsed();
+
+        let prediction = fhe.decrypt(&keypair, &encrypted_prediction);
+
+        let expected_prediction = features
+            .iter()
+            .zip(weights.iter())
+            .map(|(f, w)| f * w)
+            .sum::<u32>();
+
+        println!(
+            "      Batch {}: Val Score = {} (Enc: {:.1?} | FHE Dot: {:.1?})",
+            i, prediction, enc_time, dot_time
+        );
+
+        if prediction != expected_prediction {
+            eprintln!("FATAL: TFHE FHE integrity check failed. Triggering erasure.");
+            return Ok(());
+        }
+    }
+    println!(
+        "      Total FHE Batch Processing Time: {:.2?}",
+        fhe_start.elapsed()
+    );
 
     // Step 5: Spawning VDF and Anti-Tamper threads (simulated for compilation limits on heavy TFHE)
     let vdf_n_hex = "\
