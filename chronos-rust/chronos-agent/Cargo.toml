@@ -18,3 +18,4 @@ serde = { version = "1.0", features = ["derive"] }
 ark-ff = "0.4.0"
 ark-bls12-381 = "0.4.0"
 rand.workspace = true
+hex.workspace = true
