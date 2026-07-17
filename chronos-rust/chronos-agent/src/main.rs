@@ -67,11 +67,19 @@ async fn main() -> anyhow::Result<()> {
         dataset_start.elapsed()
     );
 
-    // Step 4: Encrypt and Evaluate a batch of 5 records
-    println!("[4/6] Encrypting features and evaluating TFHE-rs Dot Product on a batch of 5...");
+    // Step 4: Encrypt and Evaluate a batch of 5 records using a Neural Network
+    println!("[4/6] Encrypting features and evaluating a 2-Layer Neural Network over TFHE...");
 
-    // Mortgage Valuation Weights (Income = +10, Rooms = +2, Age = +1, Population = 0)
-    let weights: Vec<u32> = vec![10, 2, 1, 0];
+    // Neural Network Weights Matrix (Hidden Layer: 2 neurons)
+    // Neuron 1 weights: [Income, Rooms, Age, Population]
+    // Neuron 2 weights: [Income, Rooms, Age, Population]
+    let hidden_layer_weights = vec![
+        vec![5, 1, 0, 0], // Neuron 1: Focuses on Income and Rooms
+        vec![0, 0, 2, 1], // Neuron 2: Focuses on Age and Population
+    ];
+
+    // Output Layer Weights (combines Neuron 1 and Neuron 2)
+    let output_layer_weights = vec![2, 3];
 
     let fhe_start = Instant::now();
     for (i, record) in records.iter().take(5).enumerate() {
@@ -88,20 +96,36 @@ async fn main() -> anyhow::Result<()> {
         let enc_time = enc_start.elapsed();
 
         let dot_start = Instant::now();
+
+        // Pass 1: Hidden Layer (Matrix-Vector Multiplication)
+        let hidden_layer_output =
+            fhe.homomorphic_matrix_vector_mul(&keypair, &encrypted_features, &hidden_layer_weights);
+
+        // Pass 2: Output Layer (Dot Product)
         let encrypted_prediction =
-            fhe.homomorphic_dot_product(&keypair, &encrypted_features, &weights);
+            fhe.homomorphic_dot_product(&keypair, &hidden_layer_output, &output_layer_weights);
+
         let dot_time = dot_start.elapsed();
 
         let prediction = fhe.decrypt(&keypair, &encrypted_prediction);
 
-        let expected_prediction = features
+        // Compute plaintext expected value
+        let mut expected_hidden = vec![0; hidden_layer_weights.len()];
+        for (j, neuron_weights) in hidden_layer_weights.iter().enumerate() {
+            expected_hidden[j] = features
+                .iter()
+                .zip(neuron_weights.iter())
+                .map(|(f, w)| f * w)
+                .sum::<u32>();
+        }
+        let expected_prediction = expected_hidden
             .iter()
-            .zip(weights.iter())
-            .map(|(f, w)| f * w)
+            .zip(output_layer_weights.iter())
+            .map(|(h, w)| h * w)
             .sum::<u32>();
 
         println!(
-            "      Batch {}: Val Score = {} (Enc: {:.1?} | FHE Dot: {:.1?})",
+            "      Batch {}: NN Score = {} (Enc: {:.1?} | FHE NN: {:.1?})",
             i, prediction, enc_time, dot_time
         );
 
@@ -111,7 +135,7 @@ async fn main() -> anyhow::Result<()> {
         }
     }
     println!(
-        "      Total FHE Batch Processing Time: {:.2?}",
+        "      Total FHE Neural Network Processing Time: {:.2?}",
         fhe_start.elapsed()
     );
 
