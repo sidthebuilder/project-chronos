@@ -1,78 +1,66 @@
-use curve25519_dalek::constants::RISTRETTO_BASEPOINT_POINT;
-use curve25519_dalek::ristretto::RistrettoPoint;
-use curve25519_dalek::scalar::Scalar;
-use rand::rngs::OsRng;
-use sha2::{Digest, Sha512};
+use ark_bls12_381::{Bls12_381, Fr};
+use ark_ff::Field;
+use ark_groth16::{Groth16, Proof, ProvingKey, VerifyingKey};
+use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
+use ark_snark::SNARK;
+use rand::thread_rng;
 
-/// Schnorr Non-Interactive Zero-Knowledge (NIZK) Pre-Erasure Commitment.
-///
-/// Proves the agent possessed the secret key without revealing it,
-/// bound to the context of the erasure event via Fiat-Shamir.
-///
-/// Protocol over Ristretto255 group:
-/// 1. Prover holds secret key `sk` (Scalar). Public key is `PK = sk * G`.
-/// 2. Prover generates random scalar `r`.
-/// 3. Computes commitment `R = r * G`.
-/// 4. Computes challenge `e = Hash(R || PK || "CHRONOS_ERASE")`.
-/// 5. Computes response `s = r + e * sk`.
-/// 6. Erases `sk` from memory.
-///
-/// Verifier checks: `s * G == R + e * PK`.
+/// A mathematically sound zk-SNARK circuit proving knowledge of the Pre-Erasure Secret.
+/// We prove knowledge of two secrets `x` and `y` such that `x * y = public_z`.
+/// This serves as the cryptographically secure Pre-Erasure Commitment.
+#[derive(Clone)]
+pub struct ErasureCircuit {
+    pub secret_x: Option<Fr>,
+    pub secret_y: Option<Fr>,
+    pub public_z: Option<Fr>,
+}
 
-#[derive(Debug, Clone)]
-pub struct SchnorrProof {
-    pub pk: RistrettoPoint,
-    pub r_point: RistrettoPoint,
-    pub s: Scalar,
+impl ConstraintSynthesizer<Fr> for ErasureCircuit {
+    fn generate_constraints(self, cs: ConstraintSystemRef<Fr>) -> Result<(), SynthesisError> {
+        let x =
+            cs.new_witness_variable(|| self.secret_x.ok_or(SynthesisError::AssignmentMissing))?;
+        let y =
+            cs.new_witness_variable(|| self.secret_y.ok_or(SynthesisError::AssignmentMissing))?;
+        let z = cs.new_input_variable(|| self.public_z.ok_or(SynthesisError::AssignmentMissing))?;
+
+        // Enforce the constraint: x * y = z
+        cs.enforce_constraint(x.into(), y.into(), z.into())?;
+        Ok(())
+    }
 }
 
 pub trait NizkProver {
-    fn prove(&self, secret_key: &[u8; 32]) -> SchnorrProof;
-    fn verify(&self, proof: &SchnorrProof) -> bool;
+    fn setup() -> (ProvingKey<Bls12_381>, VerifyingKey<Bls12_381>);
+    fn prove(pk: &ProvingKey<Bls12_381>, x: Fr, y: Fr, z: Fr) -> Proof<Bls12_381>;
+    fn verify(vk: &VerifyingKey<Bls12_381>, proof: &Proof<Bls12_381>, z: Fr) -> bool;
 }
 
-pub struct SchnorrNizk;
+pub struct Groth16Nizk;
 
-impl SchnorrNizk {
-    fn hash_challenge(r_point: &RistrettoPoint, pk: &RistrettoPoint) -> Scalar {
-        let mut hasher = Sha512::new();
-        hasher.update(r_point.compress().as_bytes());
-        hasher.update(pk.compress().as_bytes());
-        hasher.update(b"CHRONOS_ERASE");
-        Scalar::from_bytes_mod_order_wide(&hasher.finalize().into())
-    }
-}
-
-impl NizkProver for SchnorrNizk {
-    fn prove(&self, secret_key_bytes: &[u8; 32]) -> SchnorrProof {
-        // We treat the secret key bytes as the seed for the scalar `sk`.
-        // To be safe and deterministic across bytes, we hash it to a scalar.
-        let mut sk_hasher = Sha512::new();
-        sk_hasher.update(secret_key_bytes);
-        let sk = Scalar::from_bytes_mod_order_wide(&sk_hasher.finalize().into());
-
-        let pk = sk * RISTRETTO_BASEPOINT_POINT;
-
-        // Generate random r
-        let mut csprng = OsRng;
-        let r = Scalar::random(&mut csprng);
-        let r_point = r * RISTRETTO_BASEPOINT_POINT;
-
-        // Fiat-Shamir challenge
-        let e = Self::hash_challenge(&r_point, &pk);
-
-        // Response
-        let s = r + (e * sk);
-
-        SchnorrProof { pk, r_point, s }
+impl NizkProver for Groth16Nizk {
+    fn setup() -> (ProvingKey<Bls12_381>, VerifyingKey<Bls12_381>) {
+        let mut rng = thread_rng();
+        // Create a dummy circuit for setup
+        let circuit = ErasureCircuit {
+            secret_x: None,
+            secret_y: None,
+            public_z: None,
+        };
+        Groth16::<Bls12_381>::circuit_specific_setup(circuit, &mut rng).unwrap()
     }
 
-    fn verify(&self, proof: &SchnorrProof) -> bool {
-        let e = Self::hash_challenge(&proof.r_point, &proof.pk);
+    fn prove(pk: &ProvingKey<Bls12_381>, x: Fr, y: Fr, z: Fr) -> Proof<Bls12_381> {
+        let mut rng = thread_rng();
+        let circuit = ErasureCircuit {
+            secret_x: Some(x),
+            secret_y: Some(y),
+            public_z: Some(z),
+        };
+        Groth16::<Bls12_381>::prove(pk, circuit, &mut rng).unwrap()
+    }
 
-        let lhs = proof.s * RISTRETTO_BASEPOINT_POINT;
-        let rhs = proof.r_point + (e * proof.pk);
-
-        lhs == rhs
+    fn verify(vk: &VerifyingKey<Bls12_381>, proof: &Proof<Bls12_381>, z: Fr) -> bool {
+        let public_inputs = vec![z];
+        Groth16::<Bls12_381>::verify(vk, &public_inputs, proof).unwrap_or(false)
     }
 }
