@@ -3,7 +3,9 @@ members = [
     "chronos-core",
     "chronos-crypto",
     "chronos-net",
-    "chronos-agent"
+    "chronos-agent",
+    "chronos-ebpf",
+    "chronos-dashboard"
 ]
 resolver = "2"
 

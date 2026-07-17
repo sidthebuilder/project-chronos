@@ -1,0 +1,13 @@
+{
+  "name": "chronos-contracts",
+  "version": "1.0.0",
+  "description": "Smart Contracts for the Chronos Decentralized FHE Network",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx hardhat test",
+    "compile": "npx hardhat compile"
+  },
+  "devDependencies": {
+    "hardhat": "^2.19.0"
+  }
+}

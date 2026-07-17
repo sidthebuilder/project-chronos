@@ -30,10 +30,36 @@ jobs:
         tool: cargo-audit
         
     - name: Run Cargo Audit (Security Vulnerability Check)
-      run: cargo audit --ignore RUSTSEC-2025-0055
+      run: cargo audit --ignore RUSTSEC-2025-0055 --ignore RUSTSEC-2025-0055
     
-    - name: Run tests
-      run: cargo test --verbose
+    - name: Install dependencies (CUDA)
+      run: |
+        sudo apt-get update && sudo apt-get install -y nvidia-cuda-toolkit gcc-12 g++-12
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 100
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 100
+        sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-12 100
+        sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-12 100
+
+    - name: Install cargo-tarpaulin
+      uses: taiki-e/install-action@cargo-tarpaulin
+
+    - name: Run tests with coverage
+      env:
+        CC: gcc-12
+        CXX: g++-12
+      run: cargo tarpaulin --engine llvm --all-features --workspace --exclude chronos-ebpf --exclude chronos-dashboard --timeout 120 --out xml
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
+        files: ./chronos-rust/cobertura.xml
+
+    - name: Check WASM Dashboard
+      run: |
+        rustup target add wasm32-unknown-unknown
+        cargo check --target wasm32-unknown-unknown -p chronos-dashboard
 
   rust_prototype_qa:
     name: Rust Prototype QA

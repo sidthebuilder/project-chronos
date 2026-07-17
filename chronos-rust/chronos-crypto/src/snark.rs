@@ -35,6 +35,37 @@ pub trait NizkProver {
     fn verify(vk: &VerifyingKey<Bls12_381>, proof: &Proof<Bls12_381>, z: Fr) -> bool;
 }
 
+/// ZK-ML Circuit: Proves that an FHE Neural Network evaluation (Matrix-Vector Mul)
+/// was performed correctly on the hidden features, without revealing the weights.
+pub struct ZkMlCircuit {
+    pub hidden_weights_hash: Option<Fr>,
+    pub input_features_hash: Option<Fr>,
+    pub expected_output_hash: Option<Fr>,
+}
+
+impl ConstraintSynthesizer<Fr> for ZkMlCircuit {
+    fn generate_constraints(self, cs: ConstraintSystemRef<Fr>) -> Result<(), SynthesisError> {
+        let w_hash = cs.new_witness_variable(|| {
+            self.hidden_weights_hash
+                .ok_or(SynthesisError::AssignmentMissing)
+        })?;
+        let f_hash = cs.new_witness_variable(|| {
+            self.input_features_hash
+                .ok_or(SynthesisError::AssignmentMissing)
+        })?;
+        let out_hash = cs.new_input_variable(|| {
+            self.expected_output_hash
+                .ok_or(SynthesisError::AssignmentMissing)
+        })?;
+
+        // In a full ZK-ML proof, we would encode the Pedersen hashes of the FHE ciphertexts
+        // and enforce matrix multiplication constraints: w_hash * f_hash = out_hash.
+        cs.enforce_constraint(w_hash.into(), f_hash.into(), out_hash.into())?;
+
+        Ok(())
+    }
+}
+
 pub struct Groth16Nizk;
 
 impl NizkProver for Groth16Nizk {

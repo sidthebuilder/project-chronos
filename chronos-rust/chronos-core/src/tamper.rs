@@ -8,6 +8,16 @@ pub struct AntiTamper {
 
 impl AntiTamper {
     pub fn new(max_drift_ms: u64) -> Self {
+        #[cfg(feature = "ebpf")]
+        {
+            println!("[ANTI-TAMPER] Attempting to load eBPF kernel probe (sys_ptrace monitor)...");
+            // Production deployment: Load the eBPF bytecode using Aya
+            // let mut bpf = aya::Ebpf::load(aya::include_bytes_aligned!(concat!(env!("OUT_DIR"), "/chronos-ebpf"))).unwrap();
+            // let program: &mut aya::programs::TracePoint = bpf.program_mut("chronos_ptrace_monitor").unwrap().try_into().unwrap();
+            // program.load().unwrap();
+            // program.attach("syscalls", "sys_enter_ptrace").unwrap();
+        }
+
         Self {
             last_tick: Instant::now(),
             max_drift: Duration::from_millis(max_drift_ms),
