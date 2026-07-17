@@ -10,11 +10,10 @@ use serde::Deserialize;
 use std::time::Instant;
 
 #[derive(Deserialize, Debug)]
-struct RealEstateRecord {
-    housing_median_age: f32,
-    total_rooms: f32,
-    population: f32,
-    median_income: f32,
+struct TelecomChurnRecord {
+    tenure: f32,
+    MonthlyCharges: f32,
+    TotalCharges: String, // Stored as string in this dataset
 }
 
 #[tokio::main]
@@ -45,23 +44,22 @@ async fn main() -> anyhow::Result<()> {
     let _secure_sk = SecureString::new(sk_bytes.clone());
     println!("      Keypair pinned in SecureString. TFHE Homomorphic operations ready.");
 
-    // Step 3: Fetch Massive Real Estate Dataset (20,640 rows, 1.4MB)
-    println!("[3/6] Fetching 1.4MB California Housing Dataset (20,640 records) over network...");
+    // Step 3: Fetch Telecom Customer Churn Dataset (7,043 rows)
+    println!("[3/6] Fetching Telecom Customer Churn Dataset (7,043 records) over network...");
     let dataset_start = Instant::now();
-    let csv_url =
-        "https://raw.githubusercontent.com/ageron/handson-ml/master/datasets/housing/housing.csv";
+    let csv_url = "https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv";
     let dataset_text = reqwest::get(csv_url).await?.text().await?;
     let mut reader = csv::Reader::from_reader(dataset_text.as_bytes());
 
     let mut records = Vec::new();
     for result in reader.deserialize() {
         if let Ok(record) = result {
-            let r: RealEstateRecord = record;
+            let r: TelecomChurnRecord = record;
             records.push(r);
         }
     }
     println!(
-        "      Loaded {} real estate records in {:.2?}",
+        "      Loaded {} telecom records in {:.2?}",
         records.len(),
         dataset_start.elapsed()
     );
@@ -82,11 +80,14 @@ async fn main() -> anyhow::Result<()> {
 
     let fhe_start = Instant::now();
     for (i, record) in records.iter().take(5).enumerate() {
+        // Parse TotalCharges safely since it can be empty string " "
+        let total_charges = record.TotalCharges.trim().parse::<f32>().unwrap_or(0.0);
+
         let features = vec![
-            (record.median_income * 10.0) as u32,
-            (record.total_rooms / 100.0) as u32,
-            record.housing_median_age as u32,
-            (record.population / 1000.0) as u32,
+            record.tenure as u32,
+            record.MonthlyCharges as u32,
+            total_charges as u32,
+            1, // Bias term
         ];
 
         let enc_start = Instant::now();
