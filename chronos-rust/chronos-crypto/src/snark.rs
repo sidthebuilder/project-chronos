@@ -4,7 +4,7 @@ use curve25519_dalek::scalar::Scalar;
 use rand::rngs::OsRng;
 use sha2::{Digest, Sha512};
 
-/// Schnorr Non-Interactive Zero-Knowledge (NIZK) Proof of Erasure.
+/// Schnorr Non-Interactive Zero-Knowledge (NIZK) Pre-Erasure Commitment.
 ///
 /// Proves the agent possessed the secret key without revealing it,
 /// bound to the context of the erasure event via Fiat-Shamir.
