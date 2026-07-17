@@ -8,7 +8,7 @@ use num_bigint::BigUint;
 use num_traits::Num;
 use serde::Deserialize;
 use std::time::Instant;
-use tokio::time::{sleep, Duration};
+
 
 #[derive(Deserialize, Debug)]
 struct RealEstateRecord {
@@ -41,7 +41,7 @@ async fn main() -> anyhow::Result<()> {
         "[2/5] Generating TFHE-rs Production FHE keypair, pinning secret key to secure memory..."
     );
     let fhe = ProductionFhe;
-    let keypair = fhe.keygen();
+    let keypair = fhe.generate_keys();
     let sk_bytes = keypair.secret_bytes();
     let _secure_sk = SecureString::new(sk_bytes.clone());
     println!("      Keypair pinned in SecureString. TFHE Homomorphic operations ready.");
