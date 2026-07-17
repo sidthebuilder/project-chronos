@@ -22,8 +22,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Step 1: Fetch external randomness as the mission seed.
     println!("[1/5] Fetching Drand randomness beacon...");
-    let drand = DrandClient::new("https://api.drand.sh");
-    let drand_client = DrandClient::new("https://api.drand.sh");
+    let drand_client = DrandClient::new();
     let beacon_seed_hex = drand_client.fetch_latest().await?;
     println!(
         "      Secured Mission Seed (Drand + CPU Hardware Entropy): {}",
