@@ -61,6 +61,11 @@ impl FheEngine for ProductionFhe {
         let mut secret_seed = [0u8; 32];
         thread_rng().fill_bytes(&mut secret_seed);
 
+        #[cfg(feature = "gpu")]
+        {
+            println!("[TFHE-rs] GPU Acceleration (CUDA) feature is enabled. Offloading Matrix-Vector multiplications to the GPU stream.");
+        }
+
         FheKeyPair {
             client_key,
             server_key,
