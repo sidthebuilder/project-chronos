@@ -3,8 +3,10 @@ members = [
     "chronos-core",
     "chronos-crypto",
     "chronos-net",
-    "chronos-agent"
-, "chronos-ebpf"]
+    "chronos-agent",
+    "chronos-ebpf",
+    "chronos-dashboard"
+]
 resolver = "2"
 
 [workspace.dependencies]
