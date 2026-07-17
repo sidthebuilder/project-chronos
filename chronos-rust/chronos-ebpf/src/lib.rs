@@ -2,10 +2,7 @@
 #![no_main]
 
 #[cfg(target_arch = "bpf")]
-use aya_ebpf::{
-    macros::tracepoint,
-    programs::TracePointContext,
-};
+use aya_ebpf::{macros::tracepoint, programs::TracePointContext};
 
 #[cfg(target_arch = "bpf")]
 #[tracepoint]

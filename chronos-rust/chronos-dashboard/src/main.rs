@@ -24,7 +24,7 @@ fn App() -> Element {
         spawn(async move {
             gloo_timers::future::sleep(std::time::Duration::from_millis(1500)).await;
             network_status.set("Drand Beacon Synced. Mission Seed Secured.");
-            
+
             gloo_timers::future::sleep(std::time::Duration::from_millis(1000)).await;
             dataset_loaded.set(true);
 
@@ -36,7 +36,7 @@ fn App() -> Element {
     rsx! {
         div {
             class: "min-h-screen bg-slate-900 text-white font-sans selection:bg-cyan-500 selection:text-slate-900",
-            
+
             // Header
             header {
                 class: "border-b border-slate-800 bg-slate-900/50 backdrop-blur-md sticky top-0 z-50",
@@ -58,11 +58,11 @@ fn App() -> Element {
             // Main Content
             main {
                 class: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8",
-                
+
                 // Dashboard Grid
                 div {
                     class: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6",
-                    
+
                     // Network Card
                     Card {
                         title: "P2P Network",

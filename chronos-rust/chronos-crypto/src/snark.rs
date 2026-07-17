@@ -45,9 +45,18 @@ pub struct ZkMlCircuit {
 
 impl ConstraintSynthesizer<Fr> for ZkMlCircuit {
     fn generate_constraints(self, cs: ConstraintSystemRef<Fr>) -> Result<(), SynthesisError> {
-        let w_hash = cs.new_witness_variable(|| self.hidden_weights_hash.ok_or(SynthesisError::AssignmentMissing))?;
-        let f_hash = cs.new_witness_variable(|| self.input_features_hash.ok_or(SynthesisError::AssignmentMissing))?;
-        let out_hash = cs.new_input_variable(|| self.expected_output_hash.ok_or(SynthesisError::AssignmentMissing))?;
+        let w_hash = cs.new_witness_variable(|| {
+            self.hidden_weights_hash
+                .ok_or(SynthesisError::AssignmentMissing)
+        })?;
+        let f_hash = cs.new_witness_variable(|| {
+            self.input_features_hash
+                .ok_or(SynthesisError::AssignmentMissing)
+        })?;
+        let out_hash = cs.new_input_variable(|| {
+            self.expected_output_hash
+                .ok_or(SynthesisError::AssignmentMissing)
+        })?;
 
         // In a full ZK-ML proof, we would encode the Pedersen hashes of the FHE ciphertexts
         // and enforce matrix multiplication constraints: w_hash * f_hash = out_hash.
