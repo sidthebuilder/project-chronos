@@ -89,3 +89,31 @@ impl NetworkService {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_network_service_creation() {
+        let service = NetworkService::new();
+        assert!(service.is_ok(), "Failed to create NetworkService");
+    }
+
+    #[tokio::test]
+    async fn test_listen_on_memory_address() {
+        let mut service = NetworkService::new().unwrap();
+        let addr: Multiaddr = "/memory/0".parse().unwrap();
+        let result = service.listen_on(addr);
+        assert!(result.is_ok(), "Failed to listen on memory address");
+    }
+
+    #[tokio::test]
+    async fn test_broadcast_task() {
+        let mut service = NetworkService::new().unwrap();
+        let result = service.broadcast_task(b"test task data");
+        // Because there are no peers connected, publish might return an error like InsufficientPeers,
+        // but we just check that the function executes without panicking.
+        let _ = result;
+    }
+}
