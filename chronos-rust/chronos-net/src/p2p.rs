@@ -3,7 +3,11 @@ use libp2p::{
     gossipsub, kad, noise, swarm::NetworkBehaviour, swarm::SwarmEvent, tcp, yamux, Multiaddr,
     PeerId, Swarm, SwarmBuilder,
 };
-use std::{collections::hash_map::DefaultHasher, hash::{Hash, Hasher}, time::Duration};
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+    time::Duration,
+};
 use tokio::sync::mpsc;
 
 #[derive(NetworkBehaviour)]
@@ -78,7 +82,10 @@ impl NetworkService {
 
     pub fn broadcast_task(&mut self, task_data: &[u8]) -> Result<()> {
         let topic = gossipsub::IdentTopic::new("chronos-compute-tasks");
-        self.swarm.behaviour_mut().gossipsub.publish(topic, task_data)?;
+        self.swarm
+            .behaviour_mut()
+            .gossipsub
+            .publish(topic, task_data)?;
         Ok(())
     }
 }

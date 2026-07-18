@@ -6,10 +6,10 @@ use chronos_crypto::vdf::{VdfEngine, WesolowskiVdf};
 use chronos_net::drand::DrandClient;
 use chronos_net::p2p::NetworkService;
 use libp2p::Multiaddr;
-use std::str::FromStr;
 use num_bigint::BigUint;
 use num_traits::Num;
 use serde::Deserialize;
+use std::str::FromStr;
 use std::time::Instant;
 
 #[derive(Deserialize, Debug)]
