@@ -101,11 +101,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_listen_on_memory_address() {
+    async fn test_listen_on_tcp_address() {
         let mut service = NetworkService::new().unwrap();
-        let addr: Multiaddr = "/memory/0".parse().unwrap();
+        let addr: Multiaddr = "/ip4/127.0.0.1/tcp/0".parse().unwrap();
         let result = service.listen_on(addr);
-        assert!(result.is_ok(), "Failed to listen on memory address");
+        assert!(result.is_ok(), "Failed to listen on tcp address");
     }
 
     #[tokio::test]
