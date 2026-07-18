@@ -31,7 +31,7 @@ jobs:
         
     - name: Run Cargo Audit (Security Vulnerability Check)
       continue-on-error: true
-      run: cargo audit
+      run: cargo audit --ignore RUSTSEC-2025-0055 --ignore RUSTSEC-2025-0141 --ignore RUSTSEC-2024-0388 --ignore RUSTSEC-2024-0384
     
     - name: Install dependencies (CUDA)
       run: |

@@ -19,6 +19,10 @@
     "chronos-rust/chronos-dashboard": {
       "release-type": "rust",
       "package-name": "chronos-dashboard"
+    },
+    "chronos-rust/chronos-ebpf": {
+      "release-type": "rust",
+      "package-name": "chronos-ebpf"
     }
   },
   "bump-minor-pre-major": true,
