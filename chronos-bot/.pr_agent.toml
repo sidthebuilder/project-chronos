@@ -42,7 +42,7 @@ approve_pr_on_self_review = true
 app_name = "chronoos"
 
 [pr_update_changelog]
-push_changelog_changes = false
+push_changelog_changes = true
 
 [pr_test]
 avoid_mocks = true
