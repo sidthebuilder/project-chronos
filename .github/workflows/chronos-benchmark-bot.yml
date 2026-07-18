@@ -24,7 +24,7 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install aiohttp ecdsa
+          pip install -r requirements.txt
 
       - name: Run Cryptographic Benchmarks
         run: |
