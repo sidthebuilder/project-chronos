@@ -221,7 +221,7 @@ class DrandClient(IOracleClient):
                 return {
                     "round": mock_round,
                     "randomness": dummy_hex,
-                    "signature": "00" * 48, # 48 bytes G1 signature mock
+                    "signature": "00" * 48,  # 48 bytes G1 signature mock
                     "is_fallback": True
                 }
         except Exception as exc:
@@ -380,11 +380,11 @@ class DrandClient(IOracleClient):
             
             # Note: py_ecc's decompress_G2 might expect the flags to remain on the string
             # or it might take the raw integer. If it takes raw integers via os2ip,
-            # we need to pass x1_flagged if it expects flags on the integer, 
+            # we need to pass x1_flagged if it expects flags on the integer,
             # but usually it expects clean integers if we call os2ip.
-            # However, py_ecc.bls.point_compression.decompress_G2 expects the tuple 
+            # However, py_ecc.bls.point_compression.decompress_G2 expects the tuple
             # (x_imaginary, x_real) where x_imaginary has the flags.
-            x1_flagged = bytes([x1_bytes[0]]) + x1_bytes[1:] # keep flags on x1
+            x1_flagged = bytes([x1_bytes[0]]) + x1_bytes[1:]  # keep flags on x1
             x0_clean = x0_bytes
 
             try:
