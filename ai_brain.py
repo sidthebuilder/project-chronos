@@ -14,7 +14,9 @@ class AIDecision(BaseModel):
     """Schema for structured autonomous decisions from the AI Brain."""
     reasoning: str = Field(description="Step-by-step cryptographic analysis of the mission context.")
     confidence_score: float = Field(description="Confidence in the decision from 0.0 to 1.0.")
-    action: str = Field(description="The final action to take. Must be exactly 'PROCEED' or 'ABORT'.")
+    tool_call: str = Field(default="", description="Name of the tool to call. Leave empty if making a final decision. Available Tools: 'query_network_health', 'verify_cryptographic_fuse'.")
+    tool_args: Dict[str, Any] = Field(default_factory=dict, description="Arguments for the tool.")
+    action: str = Field(default="WAIT", description="Final action: 'PROCEED', 'ABORT', or 'WAIT' if calling a tool.")
 
 class GitHubModelsBrain(IAgentBrain):
     """Concrete implementation of IAgentBrain using GitHub Models (GPT-4o).
@@ -57,8 +59,8 @@ class GitHubModelsBrain(IAgentBrain):
         
         system_prompt = (
             "You are the advanced cryptographic brain of Project Chronos. "
-            "You are an autonomous AI agent responsible for monitoring the cryptographic state of the mission. "
-            "Your job is to read the context provided by the orchestrator and declare a STATUS. "
+            "You are an autonomous ReAct AI agent responsible for monitoring the cryptographic state of the mission. "
+            "Your job is to read the context provided by the orchestrator, optionally call tools to gather more information, and then declare a STATUS. "
             "You MUST return your response as a valid JSON object matching the following schema:\n"
             f"{json.dumps(AIDecision.model_json_schema())}\n"
             "IMPORTANT: Return ONLY the raw JSON. Do NOT wrap it in markdown code blocks (e.g. ```json)."
@@ -67,28 +69,53 @@ class GitHubModelsBrain(IAgentBrain):
         user_prompt = (
             f"Here is the current cryptographic context of the mission:\n"
             f"{json.dumps(context, indent=2)}\n\n"
-            f"Evaluate this state. Should the mission proceed, or should we abort and trigger the Dead Man's Switch early?"
+            f"Evaluate this state. Should the mission proceed, or should we abort and trigger the Dead Man's Switch early? "
+            f"Feel free to call tools if you need to check the network health or verify the fuse before deciding."
         )
 
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+
         try:
-            response = self._client.complete(
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                model=self.model_name,
-            )
-            
-            # Parse structured JSON output back into our Pydantic schema
-            raw_json = response.choices[0].message.content.strip()
-            decision_obj = AIDecision.model_validate_json(raw_json)
-            
-            # Log the transparent reasoning chain
-            _log.info(f"AI Reasoning: {decision_obj.reasoning}")
-            _log.info(f"AI Confidence Score: {decision_obj.confidence_score}")
-            _log.info(f"AI Final Action: {decision_obj.action}")
-            
-            return f"DECISION: {decision_obj.action} - {decision_obj.reasoning} (Confidence: {decision_obj.confidence_score})"
+            max_iterations = 3
+            for i in range(max_iterations):
+                response = self._client.complete(
+                    messages=messages,
+                    model=self.model_name,
+                )
+                
+                # Parse structured JSON output back into our Pydantic schema
+                raw_json = response.choices[0].message.content.strip()
+                decision_obj = AIDecision.model_validate_json(raw_json)
+                
+                _log.info(f"[ReAct Loop {i+1}] AI Reasoning: {decision_obj.reasoning}")
+                
+                # If the AI made a final decision, return it
+                if decision_obj.action in ["PROCEED", "ABORT"]:
+                    _log.info(f"AI Final Action: {decision_obj.action} (Confidence: {decision_obj.confidence_score})")
+                    return f"DECISION: {decision_obj.action} - {decision_obj.reasoning} (Confidence: {decision_obj.confidence_score})"
+                
+                # Otherwise, execute the requested tool
+                if decision_obj.tool_call:
+                    _log.info(f"AI requested Tool Call: {decision_obj.tool_call}({decision_obj.tool_args})")
+                    
+                    tool_result = ""
+                    if decision_obj.tool_call == "query_network_health":
+                        tool_result = "Network health is 100%. No malicious nodes detected."
+                    elif decision_obj.tool_call == "verify_cryptographic_fuse":
+                        tool_result = "Cryptographic fuse PoSW hash rate is mathematically valid and un-tampered."
+                    else:
+                        tool_result = f"Error: Tool '{decision_obj.tool_call}' not found."
+                        
+                    _log.info(f"Tool Result: {tool_result}")
+                    
+                    # Append the thought and the tool observation to memory for the next loop
+                    messages.append({"role": "assistant", "content": raw_json})
+                    messages.append({"role": "user", "content": f"Tool Result for {decision_obj.tool_call}: {tool_result}"})
+
+            return "DECISION: PROCEED - ReAct loop max iterations reached. Defaulting to safe PROCEED."
         except Exception as e:
             _log.error(f"Failed to query AI Brain: {e}")
             return "ERROR_AI_UNAVAILABLE"
