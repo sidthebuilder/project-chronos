@@ -95,3 +95,41 @@ impl NizkProver for Groth16Nizk {
         Groth16::<Bls12_381>::verify(vk, &public_inputs, proof).unwrap_or(false)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ark_ff::UniformRand;
+
+    #[test]
+    fn test_honest_prover_succeeds() {
+        let mut rng = thread_rng();
+        let (pk, vk) = Groth16Nizk::setup();
+
+        let secret_x = Fr::rand(&mut rng);
+        let secret_y = Fr::rand(&mut rng);
+        let public_z = secret_x * secret_y;
+
+        let proof = Groth16Nizk::prove(&pk, secret_x, secret_y, public_z);
+        
+        // The proof must mathematically evaluate to true since x * y = z
+        assert!(Groth16Nizk::verify(&vk, &proof, public_z));
+    }
+
+    #[test]
+    fn test_malicious_prover_fails() {
+        let mut rng = thread_rng();
+        let (pk, vk) = Groth16Nizk::setup();
+
+        let secret_x = Fr::rand(&mut rng);
+        let secret_y = Fr::rand(&mut rng);
+        let true_z = secret_x * secret_y;
+        
+        let malicious_z = true_z + Fr::from(1u32); // Forged public output
+
+        let proof = Groth16Nizk::prove(&pk, secret_x, secret_y, true_z); // Proved for true_z
+        
+        // Verification must mathematically fail when checked against the forged malicious_z
+        assert!(!Groth16Nizk::verify(&vk, &proof, malicious_z));
+    }
+}

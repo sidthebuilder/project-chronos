@@ -63,7 +63,7 @@ This is a research prototype. The table below documents where the implementation
 |-----------|--------------------|-----------------------|--------|
 | FHE | TFHE-rs boolean circuits | Textbook RSA multiplicative homomorphism | Prototype |
 | VDF | Wesolowski VDF over MPC RSA modulus | SHA-256 hash chain PoSW | Prototype |
-| Erasure Proof | Groth16 SNARK | SHA-256 hash commitment | Prototype |
+| Erasure Proof | Groth16 SNARK | Groth16 SNARK over BLS12-381 | Production-grade |
 | Modulus Generation | Diogenes MPC | Local constants | Stub |
 | Time Oracle | drand quicknet chain | drand quicknet chain | Production-grade |
 | Memory Erasure | Triple-pass volatile wipe | Triple-pass write_volatile (Rust) | Production-grade |
