@@ -1,6 +1,5 @@
 import json
 import os
-import sys
 from typing import Any, Dict
 
 from pydantic import BaseModel, Field
@@ -10,6 +9,7 @@ from logger import get_chronos_logger
 
 _log = get_chronos_logger("AIBrain")
 
+
 class AIDecision(BaseModel):
     """Schema for structured autonomous decisions from the AI Brain."""
     reasoning: str = Field(description="Step-by-step cryptographic analysis of the mission context.")
@@ -17,6 +17,7 @@ class AIDecision(BaseModel):
     tool_call: str = Field(default="", description="Name of the tool to call. Leave empty if making a final decision. Available Tools: 'query_network_health', 'verify_cryptographic_fuse'.")
     tool_args: Dict[str, Any] = Field(default_factory=dict, description="Arguments for the tool.")
     action: str = Field(default="WAIT", description="Final action: 'PROCEED', 'ABORT', or 'WAIT' if calling a tool.")
+
 
 class GitHubModelsBrain(IAgentBrain):
     """Concrete implementation of IAgentBrain using GitHub Models (GPT-4o).
@@ -119,6 +120,7 @@ class GitHubModelsBrain(IAgentBrain):
         except Exception as e:
             _log.error(f"Failed to query AI Brain: {e}")
             return "ERROR_AI_UNAVAILABLE"
+
 
 class NoopAIBrain(IAgentBrain):
     """Stub IAgentBrain for testing or offline development."""
