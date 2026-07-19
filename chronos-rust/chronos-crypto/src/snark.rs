@@ -111,7 +111,7 @@ mod tests {
         let public_z = secret_x * secret_y;
 
         let proof = Groth16Nizk::prove(&pk, secret_x, secret_y, public_z);
-        
+
         // The proof must mathematically evaluate to true since x * y = z
         assert!(Groth16Nizk::verify(&vk, &proof, public_z));
     }
@@ -124,11 +124,11 @@ mod tests {
         let secret_x = Fr::rand(&mut rng);
         let secret_y = Fr::rand(&mut rng);
         let true_z = secret_x * secret_y;
-        
+
         let malicious_z = true_z + Fr::from(1u32); // Forged public output
 
         let proof = Groth16Nizk::prove(&pk, secret_x, secret_y, true_z); // Proved for true_z
-        
+
         // Verification must mathematically fail when checked against the forged malicious_z
         assert!(!Groth16Nizk::verify(&vk, &proof, malicious_z));
     }
