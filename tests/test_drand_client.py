@@ -41,10 +41,7 @@ def _generate_drand_public_key(sk: int = 42) -> str:
     z1, z2 = compress_G2(pk_pt)
     z1_b = z1.to_bytes(48, "big")
     z2_b = z2.to_bytes(48, "big")
-    flags = z1_b[0] & 0xE0
-    z1_clean = bytes([z1_b[0] & 0x1F]) + z1_b[1:]
-    z2_flagged = bytes([z2_b[0] | flags]) + z2_b[1:]
-    return (z2_flagged + z1_clean).hex()
+    return (z1_b + z2_b).hex()
 
 
 _TEST_SK = 42
