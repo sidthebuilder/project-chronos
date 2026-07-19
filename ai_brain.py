@@ -3,10 +3,18 @@ import os
 import sys
 from typing import Any, Dict
 
+from pydantic import BaseModel, Field
+
 from interfaces import IAgentBrain
 from logger import get_chronos_logger
 
 _log = get_chronos_logger("AIBrain")
+
+class AIDecision(BaseModel):
+    """Schema for structured autonomous decisions from the AI Brain."""
+    reasoning: str = Field(description="Step-by-step cryptographic analysis of the mission context.")
+    confidence_score: float = Field(description="Confidence in the decision from 0.0 to 1.0.")
+    action: str = Field(description="The final action to take. Must be exactly 'PROCEED' or 'ABORT'.")
 
 class GitHubModelsBrain(IAgentBrain):
     """Concrete implementation of IAgentBrain using GitHub Models (GPT-4o).
@@ -51,7 +59,9 @@ class GitHubModelsBrain(IAgentBrain):
             "You are the advanced cryptographic brain of Project Chronos. "
             "You are an autonomous AI agent responsible for monitoring the cryptographic state of the mission. "
             "Your job is to read the context provided by the orchestrator and declare a STATUS. "
-            "Respond in exactly one short sentence starting with 'DECISION: [PROCEED/ABORT] - <reason>'."
+            "You MUST return your response as a valid JSON object matching the following schema:\n"
+            f"{json.dumps(AIDecision.model_json_schema())}\n"
+            "IMPORTANT: Return ONLY the raw JSON. Do NOT wrap it in markdown code blocks (e.g. ```json)."
         )
 
         user_prompt = (
@@ -68,9 +78,17 @@ class GitHubModelsBrain(IAgentBrain):
                 ],
                 model=self.model_name,
             )
-            decision = response.choices[0].message.content.strip()
-            _log.info(f"AI Brain Decision: {decision}")
-            return decision
+            
+            # Parse structured JSON output back into our Pydantic schema
+            raw_json = response.choices[0].message.content.strip()
+            decision_obj = AIDecision.model_validate_json(raw_json)
+            
+            # Log the transparent reasoning chain
+            _log.info(f"AI Reasoning: {decision_obj.reasoning}")
+            _log.info(f"AI Confidence Score: {decision_obj.confidence_score}")
+            _log.info(f"AI Final Action: {decision_obj.action}")
+            
+            return f"DECISION: {decision_obj.action} - {decision_obj.reasoning} (Confidence: {decision_obj.confidence_score})"
         except Exception as e:
             _log.error(f"Failed to query AI Brain: {e}")
             return "ERROR_AI_UNAVAILABLE"
