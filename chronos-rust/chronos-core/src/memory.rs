@@ -4,7 +4,7 @@ pub struct SecureString {
 
 impl SecureString {
     pub fn new(data: Vec<u8>) -> Self {
-        #[cfg(target_family = "unix")]
+        #[cfg(all(target_family = "unix", not(miri)))]
         unsafe {
             // Attempt to pin the memory to RAM so it's never paged out to disk swap
             libc::mlock(data.as_ptr() as *const libc::c_void, data.len());
@@ -45,7 +45,7 @@ impl Drop for SecureString {
                 core::ptr::write_volatile(byte, 0);
             }
 
-            #[cfg(target_family = "unix")]
+            #[cfg(all(target_family = "unix", not(miri)))]
             {
                 // Unlock the memory so the OS can reclaim it
                 libc::munlock(self.inner.as_ptr() as *const libc::c_void, self.inner.len());
