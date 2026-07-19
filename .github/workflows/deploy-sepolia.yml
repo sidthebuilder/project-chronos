@@ -3,6 +3,9 @@ name: Deploy Smart Contracts to Sepolia
 on:
   workflow_dispatch: # Allows manual triggering from the GitHub Actions UI
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
