@@ -147,7 +147,7 @@ class PaillierCryptosystem:
                    is key_size/2 bits.  Must be at least 1024.
     """
 
-    def __init__(self, key_size: int = 1024) -> None:
+    def __init__(self, key_size: int = 2048) -> None:
         _log.info(
             f"Generating Paillier keypair: {key_size}-bit modulus "
             f"(~{key_size // 2}-bit security level)..."
