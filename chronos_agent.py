@@ -80,7 +80,8 @@ from config import (
 from drand_client import DrandClient
 from exceptions import CryptographicSanityError, MemoryIntegrityError
 from fhe_engine import PaillierFHEEngine
-from interfaces import ICryptographicEngine, IOracleClient, ITimeLock, NoopSNARKProver
+from interfaces import ICryptographicEngine, IOracleClient, ITimeLock, NoopSNARKProver, IAgentBrain
+from ai_brain import GitHubModelsBrain, NoopAIBrain
 from logger import get_chronos_logger
 from memory_sanitizer import MemorySanitizer
 from posw import PoSWManager
@@ -113,6 +114,7 @@ class ChronosAgent:
         drand: IOracleClient,
         mission_duration_sec: int = DEFAULT_MISSION_DURATION_SEC,
         snark_prover: Optional[Any] = None,
+        ai_brain: Optional[IAgentBrain] = None,
     ) -> None:
         # --- Anti-Tamper Engine -------------------------------------------
         # Imported here to avoid circular-import at module level.
@@ -137,6 +139,9 @@ class ChronosAgent:
 
         # SNARK prover: real Groth16 backend or NoopSNARKProver stub.
         self._snark_prover = snark_prover if snark_prover is not None else NoopSNARKProver()
+        
+        # AI Brain: real GitHubModelsBrain or NoopAIBrain stub.
+        self.ai_brain = ai_brain if ai_brain is not None else NoopAIBrain()
 
         # --- Extract SK into mutable buffer ---
         # The buffer will be zeroized at mission end.  We also:
@@ -213,6 +218,20 @@ class ChronosAgent:
         ct_pair = self.fhe_engine.encrypt_data(b"")
         _ = await asyncio.to_thread(self.fhe_engine.evaluate_inference, ct_pair)
         _log.info("FHE inference completed over encrypted payload.")
+        
+        # Phase 2.5 — Autonomous AI Brain Clearance
+        _log.info("--- PHASE 2.5: AI BRAIN CLEARANCE ---")
+        mission_context = {
+            "mission_duration_sec": self.mission_duration_sec,
+            "target_round": self.target_round,
+            "fhe_status": "ENCRYPTED_AND_EVALUATING",
+            "posw_status": "COMPUTING_HASH_CHAIN",
+        }
+        ai_decision = self.ai_brain.evaluate_mission_status(mission_context)
+        if "ABORT" in ai_decision.upper():
+            _log.warning(f"AI Brain commanded ABORT: {ai_decision}")
+        else:
+            _log.info(f"AI Brain cleared mission: {ai_decision}")
 
         # Phase 3 — Wait for Dead Man's Switch
         _log.info("--- PHASE 3: DEAD MAN'S SWITCH ARMED ---")
@@ -424,12 +443,14 @@ class ChronosAgentFactory:
         posw: ITimeLock = PoSWManager(target_duration_seconds=duration_sec)
         oracle: IOracleClient = DrandClient()
         snark = NoopSNARKProver()
+        ai = GitHubModelsBrain()
         return ChronosAgent(
             fhe_engine=fhe,
             posw_manager=posw,
             drand=oracle,
             mission_duration_sec=duration_sec,
             snark_prover=snark,
+            ai_brain=ai,
         )
 
 
