@@ -301,7 +301,7 @@ def run_benchmark(runs: int = 10) -> None:
 
 - All timed operations are run {runs} times.
 - Statistics: mean ± 1σ (standard deviation), 95% CI computed via
-  Student's t-distribution with ({runs}-1) = {runs-1} degrees of freedom.
+  Student's t-distribution with ({runs} - 1) = {runs - 1} degrees of freedom.
 - drand is measured once (network I/O; repeated measures are noisy and
   potentially rate-limited by the League of Entropy API).
 - No GPU, FPGA, or multi-party operations are measured in this run.

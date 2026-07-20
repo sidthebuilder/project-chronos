@@ -91,7 +91,7 @@ class GitHubModelsBrain(IAgentBrain):
                 raw_json = response.choices[0].message.content.strip()
                 decision_obj = AIDecision.model_validate_json(raw_json)
                 
-                _log.info(f"[ReAct Loop {i+1}] AI Reasoning: {decision_obj.reasoning}")
+                _log.info(f"[ReAct Loop {i + 1}] AI Reasoning: {decision_obj.reasoning}")
                 
                 # If the AI made a final decision, return it
                 if decision_obj.action in ["PROCEED", "ABORT"]:
