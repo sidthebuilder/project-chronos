@@ -11,19 +11,12 @@ ebpf = ["dep:aya"]
 tokio.workspace = true
 anyhow.workspace = true
 hex.workspace = true
+zeroize = { version = "1.8", features = ["zeroize_derive"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 aya = { version = "0.14.0", optional = true }
 
 [lib]
-name = "fast_memory"
-crate-type = ["rlib", "cdylib"]
-
-[dependencies.pyo3]
-version = "0.20"
-features = ["extension-module"]
-
-[dependencies.zeroize]
-version = "1.8"
-features = ["zeroize_derive"]
+name = "chronos_core"
+crate-type = ["rlib"]

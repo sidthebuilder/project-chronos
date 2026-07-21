@@ -22,10 +22,6 @@ ark-groth16 = "0.4.0"
 ark-bls12-381 = "0.4.0"
 ark-std = "0.4.0"
 
-[dependencies.pyo3]
-version = "0.20"
-features = ["extension-module"]
-
 [lib]
-name = "fast_posw"
-crate-type = ["rlib", "cdylib"]
+name = "chronos_crypto"
+crate-type = ["rlib"]

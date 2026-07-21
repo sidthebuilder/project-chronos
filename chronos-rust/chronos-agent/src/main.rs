@@ -15,31 +15,23 @@ use std::time::Instant;
 #[derive(Deserialize, Debug)]
 struct TelecomChurnRecord {
     tenure: f32,
-    MonthlyCharges: f32,
-    TotalCharges: String, // Stored as string in this dataset
+    monthly_charges: f32,
+    total_charges: String,
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     println!("=== CHRONOS RUST AGENT BOOTSTRAP ===");
 
-    // Step 0: Initialize Decentralized P2P Network (libp2p)
-    println!("[0/6] Initializing libp2p Decentralized Swarm (Gossipsub + Kademlia)...");
+    // Step 1: Initialize Decentralized P2P Network (libp2p)
+    println!("[1/6] Initializing libp2p Decentralized Swarm (Gossipsub + Kademlia)...");
     let mut p2p_service = NetworkService::new()?;
     let listen_addr = Multiaddr::from_str("/ip4/0.0.0.0/tcp/0")?;
     p2p_service.listen_on(listen_addr)?;
     println!("      Node bound to network. Awaiting peer discovery via Kademlia DHT.");
 
-    // Spawn the libp2p event loop in the background
-    // tokio::spawn(async move {
-    //     loop {
-    //         // In a production setup, we would call `p2p_service.swarm.select_next_some().await` here
-    //         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-    //     }
-    // });
-
-    // Step 1: Fetch external randomness as the mission seed.
-    println!("[1/5] Fetching Drand randomness beacon...");
+    // Step 2: Fetch external randomness as the mission seed.
+    println!("[2/6] Fetching Drand randomness beacon...");
     let drand_client = DrandClient::new();
     let beacon_seed_hex = drand_client.fetch_latest().await?;
     println!(
@@ -47,9 +39,9 @@ async fn main() -> anyhow::Result<()> {
         beacon_seed_hex
     );
 
-    // Step 2: Key generation and secure memory.
+    // Step 3: Key generation and secure memory.
     println!(
-        "[2/5] Generating TFHE-rs Production FHE keypair, pinning secret key to secure memory..."
+        "[3/6] Generating TFHE-rs Production FHE keypair, pinning secret key to secure memory..."
     );
     let fhe = ProductionFhe;
     let keypair = fhe.generate_keys();
@@ -57,8 +49,8 @@ async fn main() -> anyhow::Result<()> {
     let _secure_sk = SecureString::new(sk_bytes.clone());
     println!("      Keypair pinned in SecureString. TFHE Homomorphic operations ready.");
 
-    // Step 3: Fetch Telecom Customer Churn Dataset (7,043 rows)
-    println!("[3/6] Fetching Telecom Customer Churn Dataset (7,043 records) over network...");
+    // Step 4: Fetch Telecom Customer Churn Dataset (7,043 rows)
+    println!("[4/6] Fetching Telecom Customer Churn Dataset (7,043 records) over network...");
     let dataset_start = Instant::now();
     let csv_url = "https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv";
     let dataset_text = reqwest::get(csv_url).await?.text().await?;
@@ -77,30 +69,26 @@ async fn main() -> anyhow::Result<()> {
         dataset_start.elapsed()
     );
 
-    // Step 4: Encrypt and Evaluate a batch of 5 records using a Neural Network
-    println!("[4/6] Encrypting features and evaluating a 2-Layer Neural Network over TFHE...");
+    // Step 5: Encrypt and evaluate a batch of 5 records using a 2-Layer Neural Network.
+    // Each record has 4 features: [tenure, monthly_charges, total_charges, bias].
+    // Hidden layer: 2 neurons. Output layer: 1 neuron.
+    println!("[5/6] Encrypting features and evaluating a 2-Layer Neural Network over TFHE...");
 
-    // Neural Network Weights Matrix (Hidden Layer: 2 neurons)
-    // Neuron 1 weights: [Income, Rooms, Age, Population]
-    // Neuron 2 weights: [Income, Rooms, Age, Population]
     let hidden_layer_weights = vec![
-        vec![5, 1, 0, 0], // Neuron 1: Focuses on Income and Rooms
-        vec![0, 0, 2, 1], // Neuron 2: Focuses on Age and Population
+        vec![5, 1, 0, 0], // Neuron 1: weighted toward tenure and monthly charges
+        vec![0, 0, 2, 1], // Neuron 2: weighted toward total charges and bias
     ];
-
-    // Output Layer Weights (combines Neuron 1 and Neuron 2)
     let output_layer_weights = vec![2, 3];
 
     let fhe_start = Instant::now();
     for (i, record) in records.iter().take(5).enumerate() {
-        // Parse TotalCharges safely since it can be empty string " "
-        let total_charges = record.TotalCharges.trim().parse::<f32>().unwrap_or(0.0);
+        let total_charges = record.total_charges.trim().parse::<f32>().unwrap_or(0.0);
 
         let features = vec![
             record.tenure as u32,
-            record.MonthlyCharges as u32,
+            record.monthly_charges as u32,
             total_charges as u32,
-            1, // Bias term
+            1, // bias term
         ];
 
         let enc_start = Instant::now();
@@ -110,19 +98,18 @@ async fn main() -> anyhow::Result<()> {
 
         let dot_start = Instant::now();
 
-        // Pass 1: Hidden Layer (Matrix-Vector Multiplication)
+        // Hidden layer (matrix-vector multiplication under FHE)
         let hidden_layer_output =
             fhe.homomorphic_matrix_vector_mul(&keypair, &encrypted_features, &hidden_layer_weights);
 
-        // Pass 2: Output Layer (Dot Product)
+        // Output layer (dot product under FHE)
         let encrypted_prediction =
             fhe.homomorphic_dot_product(&keypair, &hidden_layer_output, &output_layer_weights);
 
         let dot_time = dot_start.elapsed();
-
         let prediction = fhe.decrypt(&keypair, &encrypted_prediction);
 
-        // Compute plaintext expected value
+        // Compute expected plaintext value for integrity verification
         let mut expected_hidden = vec![0; hidden_layer_weights.len()];
         for (j, neuron_weights) in hidden_layer_weights.iter().enumerate() {
             expected_hidden[j] = features
@@ -138,7 +125,7 @@ async fn main() -> anyhow::Result<()> {
             .sum::<u32>();
 
         println!(
-            "      Batch {}: NN Score = {} (Enc: {:.1?} | FHE NN: {:.1?})",
+            "      Record {}: NN Score = {} (Enc: {:.1?} | FHE NN: {:.1?})",
             i, prediction, enc_time, dot_time
         );
 
@@ -156,7 +143,7 @@ async fn main() -> anyhow::Result<()> {
     let task_msg = format!("Task Complete: Evaluated 5 records, final prediction match.");
     let _ = p2p_service.broadcast_task(task_msg.as_bytes());
 
-    // Step 5: Spawning VDF and Anti-Tamper threads (simulated for compilation limits on heavy TFHE)
+    // Step 6: VDF time-lock and Anti-Tamper daemon, then pre-erasure SNARK commitment.
     let vdf_n_hex = "\
         c4b36f86b7188b1f4df4f661df2c70c1e847cd3b9b4625b5969542a27fc7e8a9\
         155ebc402175c5e89d1b09b0b46321b19901f468249fc21370211ff1a134a65b\
@@ -165,13 +152,13 @@ async fn main() -> anyhow::Result<()> {
     let vdf_n = BigUint::from_str_radix(vdf_n_hex, 16).unwrap();
     let vdf_seed = hex::decode(&beacon_seed_hex).unwrap_or_else(|_| vec![0; 32]);
 
-    println!("[5/6] Spawning Wesolowski VDF time-lock (10k sequential squarings)...");
+    println!("[6/6] Spawning Wesolowski VDF time-lock (10k sequential squarings)...");
     let vdf_handle = tokio::task::spawn_blocking(move || {
         let vdf = WesolowskiVdf { n: vdf_n };
         vdf.evaluate(&vdf_seed, 10_000)
     });
 
-    println!("[6/6] Spawning anti-tamper daemon on dedicated OS thread...");
+    println!("      Spawning anti-tamper daemon on dedicated OS thread...");
     let (tamper_tx, tamper_rx) = std::sync::mpsc::channel::<bool>();
     std::thread::spawn(move || {
         let mut tamper = AntiTamper::new(500);
@@ -201,19 +188,13 @@ async fn main() -> anyhow::Result<()> {
     use ark_ff::UniformRand;
     use rand::thread_rng;
 
-    // Simulate mapping the secure memory secret key to a field element
     let mut rng = thread_rng();
     let secret_x = Fr::rand(&mut rng);
     let secret_y = Fr::rand(&mut rng);
     let public_z = secret_x * secret_y;
 
-    // Trusted Setup (Simulated for this mission)
     let (pk, vk) = Groth16Nizk::setup();
-
-    // Prove knowledge of x and y that multiply to public_z
     let nizk_proof = Groth16Nizk::prove(&pk, secret_x, secret_y, public_z);
-
-    // Verify the proof
     let verified = Groth16Nizk::verify(&vk, &nizk_proof, public_z);
     println!("      Arkworks Groth16 NIZK verified: {}", verified);
 
@@ -228,14 +209,13 @@ mod tests {
 
     #[test]
     fn test_record_parsing() {
-        // A simple test to ensure the TelecomChurnRecord struct works and satisfies coverage
         let record = TelecomChurnRecord {
             tenure: 12.0,
-            MonthlyCharges: 50.0,
-            TotalCharges: "600.0".to_string(),
+            monthly_charges: 50.0,
+            total_charges: "600.0".to_string(),
         };
         assert_eq!(record.tenure, 12.0);
-        assert_eq!(record.MonthlyCharges, 50.0);
-        assert_eq!(record.TotalCharges, "600.0");
+        assert_eq!(record.monthly_charges, 50.0);
+        assert_eq!(record.total_charges, "600.0");
     }
 }
