@@ -27,8 +27,8 @@ azure-core>=1.41.0
 # ── test dependencies ────────────────────────────────────────────────────────
 # These only get installed in dev/CI, not in production.
 pytest>=8.2,<9.0
-pytest-asyncio>=1.4.0,<2.0
-pytest-cov>=7.1.0,<8.0
+pytest-asyncio>=0.23,<1.0
+pytest-cov>=4.1,<5.0
 pytest-mock>=3.15,<4.0
 
 
@@ -36,7 +36,7 @@ pytest-mock>=3.15,<4.0
 # Formatter, linter, type checker, security scanner.
 # Pinned loosely so minor updates come through automatically in CI,
 # but major version bumps (which often have breaking config changes) don't.
-black>=26.0,<27.0
+black>=24.0,<25.0
 flake8>=7.3,<8.0
 isort>=8.0,<9.0
 mypy>=1.19,<2.0
