@@ -8,7 +8,6 @@
 /// This is the Rust equivalent of `posw.py` — same algorithm, no Python
 /// bindings. The Python prototype uses `mp.Pipe` for subprocess communication;
 /// this implementation runs entirely in a Tokio `spawn_blocking` thread.
-
 use sha2::{Digest, Sha256};
 
 const CHECKPOINT_COUNT: usize = 1_000;
@@ -79,7 +78,10 @@ mod tests {
         seed_b[0] = 1;
         let r_a = compute_posw_chain(&seed_a, 1_000);
         let r_b = compute_posw_chain(&seed_b, 1_000);
-        assert_ne!(r_a.root, r_b.root, "Different seeds must produce different roots");
+        assert_ne!(
+            r_a.root, r_b.root,
+            "Different seeds must produce different roots"
+        );
     }
 
     #[test]
