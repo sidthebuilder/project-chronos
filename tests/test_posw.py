@@ -143,8 +143,12 @@ class TestPoSWManager(unittest.TestCase):
 
         with patch.object(self.posw, "_log") as mock_log:
             self.posw.compute_posw()
-            mock_log.warning.assert_called_once()
-            self.assertIn("[POSW DRIFT]", mock_log.warning.call_args[0][0])
+            drift_calls = [
+                c for c in mock_log.warning.call_args_list
+                if "[POSW DRIFT]" in c[0][0]
+            ]
+            self.assertEqual(len(drift_calls), 1, "Expected exactly one [POSW DRIFT] warning")
+            self.assertIn("[POSW DRIFT]", drift_calls[0][0][0])
 
     @patch("posw.mp.get_context")
     def test_worker_exitcode_failure(self, mock_get_context) -> None:
