@@ -1,14 +1,14 @@
-# Project CHRONOS — Prototype
+# Project CHRONOS - Prototype
 
 **A Compositional Architecture for Ephemeral FHE Agents with VDF Time-Locking and Attestable Software Erasure**
 
-> ⚠️ **Research prototype under active development.** The Python implementation is the foundational reference model. The Rust implementation is the high-performance successor.
+> Research prototype under active development. The Python implementation is the foundational reference model. The Rust implementation is the high-performance successor.
 
-## 🛑 Proprietary & Confidential
+## Proprietary and Confidential
 
 **Copyright (c) 2026 Shashank Kumar. All Rights Reserved.**
 
-This repository and all its contents — code, documentation, and architecture — are strictly proprietary. No one is permitted to use, copy, modify, distribute, or commercially exploit this software without explicit written permission from the author.
+This repository and all its contents, including code, documentation, and architecture, are strictly proprietary. No one is permitted to use, copy, modify, distribute, or commercially exploit this software without explicit written permission from the author.
 
 See [LICENSE](LICENSE) for full terms.
 
@@ -29,9 +29,9 @@ See [LICENSE](LICENSE) for full terms.
 
 CHRONOS is a research prototype for cryptographic agent containment. It gives an autonomous AI agent three simultaneous guarantees:
 
-1. **Plaintext Blindness** — The agent processes inputs under Fully Homomorphic Encryption and never observes plaintext.
-2. **Verifiable Time-Bound Existence** — A Verifiable Delay Function enforces a mission duration that cannot be bypassed through parallelism.
-3. **Attestable Software Erasure** — A cryptographic commitment proves the key was destroyed after the deadline.
+1. **Plaintext Blindness** - The agent processes inputs under Fully Homomorphic Encryption and never observes plaintext.
+2. **Verifiable Time-Bound Existence** - A Verifiable Delay Function enforces a mission duration that cannot be bypassed through parallelism.
+3. **Attestable Software Erasure** - A cryptographic commitment proves the key was destroyed after the deadline.
 
 The goal is structural containment enforced by mathematics, not behavioural alignment.
 
@@ -67,14 +67,14 @@ This is a research prototype. The table below documents where the implementation
 
 | Subsystem | Paper Specification | Current Implementation | Status |
 |-----------|--------------------|-----------------------|--------|
-| FHE | TFHE-rs boolean circuits | TFHE-rs `FheUint32` (Zama production library) | Production-grade |
+| FHE | TFHE-rs boolean circuits | TFHE-rs FheUint32 (Zama production library) | Production-grade |
 | VDF | Wesolowski VDF over MPC RSA modulus | Wesolowski VDF over local RSA modulus | Prototype |
 | Erasure Proof | Groth16 SNARK | Arkworks Groth16 over BLS12-381 | Production-grade |
 | Modulus Generation | Diogenes MPC | Local hardcoded constants | Stub |
 | Time Oracle | drand quicknet chain | drand quicknet chain | Production-grade |
-| Memory Erasure | Triple-pass volatile wipe | Triple-pass `write_volatile` + `compiler_fence` (Rust) | Production-grade |
+| Memory Erasure | Triple-pass volatile wipe | Triple-pass write_volatile + compiler_fence (Rust) | Production-grade |
 | Anti-Tamper | Timing detection daemon | Dedicated OS thread timing daemon | Production-grade |
-| P2P Network | — | libp2p Gossipsub + Kademlia DHT | Prototype |
+| P2P Network | - | libp2p Gossipsub + Kademlia DHT | Prototype |
 
 ---
 
@@ -91,21 +91,22 @@ This is a research prototype. The table below documents where the implementation
 ### Code
 | File | Fix |
 |------|-----|
-| `posw.py` | `mp.Queue` to `mp.Pipe` — fixes deadlock on large checkpoint payloads |
-| `chronos_agent.py` | Schnorr NIZK correctly labelled pre-erasure commitment |
+| `posw.py` | mp.Queue changed to mp.Pipe to fix deadlock on large checkpoint payloads |
+| `chronos_agent.py` | Schnorr NIZK correctly labelled as pre-erasure commitment |
 | `drand_client.py` | BLS key format corrected for quicknet chain |
-| `memory_sanitizer.py` | Wipe verification uses `ctypes.string_at` |
+| `memory_sanitizer.py` | Wipe verification uses ctypes.string_at |
 | `security/anti_tamper.py` | Anomaly threshold raised to 5 consecutive hits |
 
 ### Rust Prototype (new in v2)
 | Component | What it implements |
 |-----------|-------------------|
-| `chronos-crypto/fhe.rs` | Production TFHE-rs `FheUint32`. Homomorphic dot product and matrix-vector multiplication for encrypted neural network inference. |
-| `chronos-crypto/vdf.rs` | Wesolowski VDF with `evaluate()` and `verify()`. Uses Fiat-Shamir heuristic for the challenge. |
-| `chronos-crypto/snark.rs` | Arkworks Groth16 over BLS12-381. Proves knowledge of pre-erasure secret `x * y = z`. |
-| `chronos-core/memory.rs` | `SecureString` with DoD 5220.22-M triple-pass `write_volatile` zeroization on `Drop`. |
+| `chronos-crypto/fhe.rs` | Production TFHE-rs FheUint32. Homomorphic dot product and matrix-vector multiplication for encrypted neural network inference. |
+| `chronos-crypto/vdf.rs` | Wesolowski VDF with evaluate() and verify(). Uses Fiat-Shamir heuristic for the challenge. |
+| `chronos-crypto/snark.rs` | Arkworks Groth16 over BLS12-381. Proves knowledge of pre-erasure secret x * y = z. |
+| `chronos-crypto/posw.rs` | Pure Rust SHA-256 hash chain PoSW with checkpoint recording and determinism tests. |
+| `chronos-core/memory.rs` | SecureString with DoD 5220.22-M triple-pass write_volatile zeroization on Drop. |
 | `chronos-core/tamper.rs` | CPU timing anomaly daemon on a dedicated OS thread. Triggers erasure after 5 consecutive drifts. |
-| `chronos-net/drand.rs` | Async drand beacon fetch via `reqwest`. Mixes network randomness with Intel RDRAND hardware entropy. |
+| `chronos-net/drand.rs` | Async drand beacon fetch via reqwest. Mixes network randomness with Intel RDRAND hardware entropy. |
 | `chronos-net/p2p.rs` | libp2p Gossipsub + Kademlia DHT for decentralised compute task broadcasting. |
 | `chronos-agent/main.rs` | Tokio async orchestrator. Full 6-phase agent lifecycle. |
 
@@ -123,7 +124,7 @@ This is a research prototype. The table below documents where the implementation
 ### What CHRONOS Does NOT Guarantee
 - Physical erasure against cold-boot or DMA attacks
 - Post-quantum security (RSA VDF modulus relies on factoring hardness)
-- Erasure if the OS swaps the key to disk before `mlock` is called
+- Erasure if the OS swaps the key to disk before mlock is called
 
 ---
 
@@ -131,7 +132,7 @@ This is a research prototype. The table below documents where the implementation
 
 ### Rust Prototype
 
-Requires Rust stable and the Visual Studio C++ Build Tools (Windows) or `build-essential` (Linux).
+Requires Rust stable and the Visual Studio C++ Build Tools (Windows) or build-essential (Linux).
 
 ```bash
 cd chronos-rust
@@ -156,6 +157,7 @@ cargo run --bin chronos-agent
 ```
 
 Expected output:
+
 ```
 === CHRONOS RUST AGENT BOOTSTRAP ===
 [1/6] Initializing libp2p Decentralized Swarm (Gossipsub + Kademlia)...
@@ -187,5 +189,5 @@ Expected output:
 
 ## Contributors
 
-*   **Shashank Kumar** ([@sidthebuilder](https://github.com/sidthebuilder)) — shashankchoudhary792@gmail.com
-*   <img src="chronos_bot_logo.png" width="20" height="20" align="top"/> **Chronoos Bot** ([@Chronoos-Bot](https://github.com/apps/chronoos-bot)) — AI Repository Manager
+- **Shashank Kumar** ([@sidthebuilder](https://github.com/sidthebuilder)) - shashankchoudhary792@gmail.com
+- <img src="chronos_bot_logo.png" width="20" height="20" align="top"/> **Chronoos Bot** ([@Chronoos-Bot](https://github.com/apps/chronoos-bot)) - AI Repository Manager
