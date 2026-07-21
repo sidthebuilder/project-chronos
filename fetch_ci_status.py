@@ -1,4 +1,6 @@
-import urllib.request, json, sys
+import json
+import sys
+import urllib.request
 
 # Note: fetching job logs might require auth. If it fails, we will print the error.
 url = 'https://api.github.com/repos/sidthebuilder/project-chronos/actions/runs?branch=feat/ai-brain'
