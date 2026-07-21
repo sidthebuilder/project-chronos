@@ -45,8 +45,8 @@ class ChronosSettings(BaseSettings):  # type: ignore
         description="Seconds between consecutive drand beacon rounds.",
     )
     drand_public_api: str = Field(
-        default="https://api.drand.sh/public/latest",
-        description="HTTP endpoint for the drand League of Entropy public chain.",
+        default="https://api.drand.sh/52db9ba70e0cc0f6eaf7803dd07447a1f5477735fd3f661792ba94600c84e971/public/latest",
+        description="HTTP endpoint for the drand League of Entropy active quicknet chain.",
     )
     drand_timeout_sec: int = Field(
         default=10,

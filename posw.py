@@ -71,6 +71,11 @@ Calibration:
 import hashlib
 import multiprocessing as mp
 
+try:
+    import fast_posw
+    _RUST_AVAILABLE = True
+except ImportError:
+    _RUST_AVAILABLE = False
 
 import secrets
 import time
@@ -355,47 +360,54 @@ class PoSWManager:
             f"~{self.target_duration_seconds}s target duration..."
         )
 
-        # Pipe: parent_conn receives, child_conn sends.
-        ctx = mp.get_context("spawn")
-        parent_conn, child_conn = ctx.Pipe(duplex=False)
+        if _RUST_AVAILABLE:
+            self._log.info("Accelerated Rust PoSW (PyO3) backend available. Using fast_posw.")
+            t0: float = time.time()
+            checkpoints = fast_posw.compute_posw_chain(self._seed, self.t)
+            elapsed: float = time.time() - t0
+        else:
+            self._log.warning("Rust PoSW backend not found. Falling back to slow Python multiprocessing...")
+            # Pipe: parent_conn receives, child_conn sends.
+            ctx = mp.get_context("spawn")
+            parent_conn, child_conn = ctx.Pipe(duplex=False)
 
-        worker = ctx.Process(
-            target=_posw_worker,
-            args=(self._seed, self.t, child_conn),
-            name="chronos-posw-worker",
-            daemon=False,  # Non-daemon so join() works correctly.
-        )
-
-        t0: float = time.time()
-        worker.start()
-
-        # Close child's end in parent process so that the EOF signal propagates
-        # correctly when the child exits after sending.
-        child_conn.close()
-
-        # Block until the worker sends the checkpoint list.
-        # mp.Pipe.recv() will block until data is available; there is no
-        # polling loop needed.  The data is pickle-serialised by multiprocessing.
-        checkpoints: Optional[List[bytes]] = None
-        try:
-            checkpoints = parent_conn.recv()
-        except EOFError:
-            # Worker closed the pipe without sending — will be caught below.
-            pass
-        finally:
-            parent_conn.close()
-
-        worker.join()
-        elapsed: float = time.time() - t0
-
-        if worker.exitcode != 0:
-            raise RuntimeError(
-                f"PoSW worker process exited with code {worker.exitcode}. "
-                f"Check system resources (OOM killer, CPU thermal throttling)."
+            worker = ctx.Process(
+                target=_posw_worker,
+                args=(self._seed, self.t, child_conn),
+                name="chronos-posw-worker",
+                daemon=False,  # Non-daemon so join() works correctly.
             )
 
-        if checkpoints is None:
-            raise RuntimeError("PoSW worker process exited without producing checkpoints.")
+            t0 = time.time()
+            worker.start()
+
+            # Close child's end in parent process so that the EOF signal propagates
+            # correctly when the child exits after sending.
+            child_conn.close()
+
+            # Block until the worker sends the checkpoint list.
+            # mp.Pipe.recv() will block until data is available; there is no
+            # polling loop needed.  The data is pickle-serialised by multiprocessing.
+            checkpoints = None
+            try:
+                checkpoints = parent_conn.recv()
+            except EOFError:
+                # Worker closed the pipe without sending — will be caught below.
+                pass
+            finally:
+                parent_conn.close()
+
+            worker.join()
+            elapsed = time.time() - t0
+
+            if worker.exitcode != 0:
+                raise RuntimeError(
+                    f"PoSW worker process exited with code {worker.exitcode}. "
+                    f"Check system resources (OOM killer, CPU thermal throttling)."
+                )
+
+            if checkpoints is None:
+                raise RuntimeError("PoSW worker process exited without producing checkpoints.")
 
         # Build the real binary Merkle tree over the raw checkpoint leaves.
         tree = MerkleTree(checkpoints)

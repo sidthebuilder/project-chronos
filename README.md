@@ -1,10 +1,20 @@
-# Project CHRONOS
+# Project CHRONOS Prototype
+
+<div align="center">
+  <h2>⏳ <b>MISSION TIMER: 7 DAYS REMAINING UNTIL ERASURE</b> ⏳</h2>
+</div>
 
 **A Compositional Architecture for Ephemeral FHE Agents with VDF Time-Locking and Attestable Software Erasure**
 
 > ⚠️ **Rust Prototype under active development.** The Python implementation currently serves as the foundational reference model.
 
-Copyright (c) 2026 Shashank Kumar. All Rights Reserved. See [LICENSE](LICENSE).
+## 🛑 PROPRIETARY & CONFIDENTIAL 🛑
+
+**Copyright (c) 2026 Shashank Kumar. All Rights Reserved.**
+
+This repository and all its contents (code, documentation, and architecture) are strictly proprietary. **No one is permitted to use, copy, modify, distribute, or commercially exploit this software without explicit written permission from the author.**
+
+See [LICENSE](LICENSE) for details.
 
 **Contact:** shashankchoudhary792@gmail.com | [github.com/sidthebuilder](https://github.com/sidthebuilder)
 
