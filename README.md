@@ -52,7 +52,7 @@ project-chronos/
 ├── posw.py                     # SHA-256 Proof-of-Sequential-Work + Merkle tree
 ├── drand_client.py             # drand League of Entropy oracle client
 ├── memory_sanitizer.py         # Triple-pass C-level memory erasure
-├── interfaces.py               # Protocol interfaces and production stubs
+├── interfaces.py               # Protocol interfaces and prototype stubs
 ├── security/
 │   ├── anti_tamper.py
 │   └── secure_string.py
@@ -67,13 +67,13 @@ This is a research prototype. The table below documents where the implementation
 
 | Subsystem | Paper Specification | Current Implementation | Status |
 |-----------|--------------------|-----------------------|--------|
-| FHE | TFHE-rs boolean circuits | TFHE-rs FheUint32 (Zama production library) | Production-grade |
+| FHE | TFHE-rs boolean circuits | TFHE-rs FheUint32 (Zama library) | Prototype |
 | VDF | Wesolowski VDF over MPC RSA modulus | Wesolowski VDF over local RSA modulus | Prototype |
-| Erasure Proof | Groth16 SNARK | Arkworks Groth16 over BLS12-381 | Production-grade |
-| Modulus Generation | Diogenes MPC | Local hardcoded constants | Stub |
-| Time Oracle | drand quicknet chain | drand quicknet chain | Production-grade |
-| Memory Erasure | Triple-pass volatile wipe | Triple-pass write_volatile + compiler_fence (Rust) | Production-grade |
-| Anti-Tamper | Timing detection daemon | Dedicated OS thread timing daemon | Production-grade |
+| Erasure Proof | Groth16 SNARK | Arkworks Groth16 over BLS12-381 | Prototype |
+| Modulus Generation | Diogenes MPC | Local hardcoded constants | Prototype Stub |
+| Time Oracle | drand quicknet chain | drand quicknet chain | Prototype |
+| Memory Erasure | Triple-pass volatile wipe | Triple-pass write_volatile + compiler_fence (Rust) | Prototype |
+| Anti-Tamper | Timing detection daemon | Dedicated OS thread timing daemon | Prototype |
 | P2P Network | - | libp2p Gossipsub + Kademlia DHT | Prototype |
 
 ---
