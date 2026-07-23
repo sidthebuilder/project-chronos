@@ -1,3 +1,6 @@
+> [!NOTE]
+> 🔧 **Rust prototype underway.** The Python implementation is the current reference. Active development in progress — not production ready.
+
 # Project CHRONOS - Prototype
 
 **A Compositional Architecture for Ephemeral FHE Agents with VDF Time-Locking and Attestable Software Erasure**
